@@ -1,0 +1,252 @@
+
+; PATTERN CYCLE
+; load next row
+; apply to channels
+	
+; CHANNEL CYCLE INIT
+	
+	lda	$0a
+	sta	$03f0
+	lda	$a0
+	sta	$03f1
+	
+; BEGIN CHANNEL LOOP
+beginChannelLoop
+
+
+; FIND CURRENT CYCLE's CHANNEL
+;	so $40 can be set to correct pattern
+
+	lda	$03f0			; load current channel
+	cmp	$0a				; check if it's bass channel etc../
+	bne	notChannelBass
+	jsr SET_CHANNEL_BASE
+notChannelBass
+	cmp	$0b
+	bne	notChannelAlto
+	jsr	SET_CHANNEL_ALTO
+notChannelAlto
+	cmp	$0c
+	bne	notChannelSoprano
+	jsr SET_CHANNEL_SOPRANO
+notChannelSoprano
+	cmp	$0d
+	bne notChannelNoise	
+	jsr SET_CHANNEL_NOISE
+notChannelNoise
+
+;	pattern position
+	ldx $03f1
+	lda $0301,x
+	tay
+	lda ($40),y
+	tax
+	iny
+	lda ($40),y
+	cmp #255
+	bne patternNotEnd
+	cpx #255
+	bne patternNotEnd
+	inx
+	txa
+	ldx $03f1
+	sta $0301,x
+patternNotEnd
+	
+; get channel data 5th byte
+;	ldx $03f1
+; lda $0305,x
+
+;	riff position
+;	ldx $03f1
+;	lda $0300,x
+	
+; set channel value
+	ldx	$03f0
+	sta	$9000,x
+	
+; set next channel ; see if we're done
+	inc $03f0
+	lda $03f0
+	cmp	#$0e
+	beq	END_CHANNEL_CYCLE
+	lda $03f1
+	adc #$10
+	sta $03f1
+	jmp beginChannelLoop
+	
+END_CHANNEL_CYCLE
+
+
+; VOLUME
+	ldx	$03e0
+	lda	CHANNEL_VOLUME,x
+	cmp	#255
+	bne	skipVolEnd
+	ldx	#0
+	lda	CHANNEL_VOLUME
+skipVolEnd
+	sta	$900e
+	inx
+	stx	$03e0
+
+
+; GO HOME	
+	rts
+
+;	---------
+;	DATA HOLD
+;	---------
+	
+CHANNEL_BASS
+	word	bassline
+	word	bassline
+	word	bassline
+	word	bassline2
+	byte	255, 255
+	
+CHANNEL_ALTO
+	word	doot
+	byte	255, 255
+	
+CHANNEL_SOPRANO
+	word	whip
+	byte	255, 255
+	
+CHANNEL_NOISE
+	word	kick
+	word	hat
+	word	hat
+	word	kick
+	word	hat
+	word	kick
+	word	snare
+	word	hat
+	byte	255,255
+	
+CHANNEL_VOLUME
+	byte	15, 8, 10, 8, 13, 8, 10, 8, 255
+	
+;	--------------------------
+;	PATTERNS
+;	--------------------------
+
+pattern00
+;	word	bassline, bassline, bassline, bassline2
+	word	endPattern
+	
+;	--------------------------
+;	RIFFS AND MACROS
+;	--------------------------
+
+kick
+	byte	135, 129, 0
+snare
+	byte	190, 210, 0
+hat
+	byte	250, 127, 0
+	
+bassline
+	byte	135, 135, 135, 135, 127, 127, 135, 135
+	byte	135, 135, 127, 127, 147, 147, 127, 127
+	byte	0
+bassline2
+	byte	135, 135, 135, 135, 127, 127, 135, 135
+	byte	195, 135, 127, 127, 203, 147, 147, 127
+	byte	0
+	
+whip
+	byte	195, 196, 197, 198, 127, 127, 127, 127
+	byte	127, 127, 127, 127, 127, 127, 127, 127
+	byte	127, 127
+	byte	0
+	
+doot
+	byte	240, 127, 127, 127, 127, 127
+	byte 	0
+
+	
+
+
+	
+SET_CHANNEL_BASS
+	pha						; put accumulator onto stack
+getBassSongPosition
+	ldx $03a2
+	lda CHANNEL_BASS,x
+	inx
+	ldy CHANNEL_BASS,x
+	cmp #255
+	bne notBassEndSong
+	cpy #255
+	bne notBassEndSong
+	lda #0
+	sta $03a2
+	jmp getBassSongPosition
+notBassEndSong
+	sta	$40				; set current pattern
+	sty	$41
+	pla						; pull accumulator from stack
+	rts
+
+	
+SET_CHANNEL_ALTO
+	pha						; put accumulator onto stack
+getAltoSongPosition
+	ldx $03b2
+	lda CHANNEL_ALTO,x
+	inx
+	ldy CHANNEL_ALTO,x
+	cmp #255
+	bne notAltoEndSong
+	cpy #255
+	bne notAltoEndSong
+	lda #0
+	sta $03b2
+	jmp getAltoSongPosition
+notAltoEndSong
+	sta	$40				; set current pattern
+	sty	$41
+	pla						; pull accumulator from stack
+	rts
+	
+SET_CHANNEL_SOPRANO
+	pha						; put accumulator onto stack
+getSopranoSongPosition
+	ldx $03c2
+	lda CHANNEL_SOPRANO,x
+	inx
+	ldy CHANNEL_SOPRANO,x
+	cmp #255
+	bne notSopranoEndSong
+	cpy #255
+	bne notSopranoEndSong
+	lda #0
+	sta $03c2
+	jmp getSopranoSongPosition
+notSopranoEndSong
+	sta	$40				; set current pattern
+	sty	$41
+	pla						; pull accumulator from stack
+	rts
+	
+SET_CHANNEL_NOISE
+	pha						; put accumulator onto stack
+getNoiseSongPosition
+	ldx $03d2
+	lda CHANNEL_NOISE,x
+	inx
+	ldy CHANNEL_NOISE,x
+	cmp #255
+	bne notNoiseEndSong
+	cpy #255
+	bne notNoiseEndSong
+	lda #0
+	sta $03d2
+	jmp getNoiseSongPosition
+notNoiseEndSong
+	sta	$40				; set current pattern
+	sty	$41
+	pla						; pull accumulator from stack
+	rts
+	

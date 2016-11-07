@@ -1,0 +1,1035 @@
+------- FILE player.asm LEVEL 1 PASS 2
+      1  1aac ????						; Vic-20 Player 2 : 4mat/Orb 2007.
+      2  1aac ????						;
+      3  1aac ????						; Frontend for testing songs.
+      4  1aac ????						;
+      5  1aac ????						; Compiles with DASM.
+      6  1aac ????
+      7  1aac ????	       00 a0	   dnote      =	$a0
+      8  1aac ????	       00 a3	   instrument =	dnote + $03
+      9  1aac ????	       00 a6	   instrloc   =	instrument + $03
+     10  1aac ????	       00 a9	   instrlen   =	instrloc + $03
+     11  1aac ????	       00 ac	   tempopat   =	instrlen + $03
+     12  1aac ????	       00 af	   temponot   =	tempopat + $03
+     13  1aac ????	       00 b2	   transsng   =	temponot + $03
+     14  1aac ????	       00 b5	   delaysng   =	transsng + $03
+     15  1aac ????	       00 b8	   temptrans  =	delaysng + $03
+     16  1aac ????	       00 bb	   tempvol    =	temptrans+$03
+     17  1aac ????	       00 bc	   voldelay   =	tempvol+$01
+     18  1aac ????	       00 bd	   volwait    =	voldelay+$01
+     19  1aac ????	       00 be	   temp       =	volwait+$01
+     20  1aac ????	       00 bf	   tempvol2   =	temp+$01
+     21  1aac ????
+     22  1aac ????				      processor	6502
+     23  1aac ????
+     24  1001					      org	$1001
+     25  1001		       0b 10 04 00*	      .byte.b	$0b,$10,$04,$00,$9e,$34,$31,$31,$30,0,0,0,0
+     26  100e
+     27  100e					      org	$100e
+     28  100e
+     29  100e		       78		      sei
+     30  100f
+     31  100f		       a9 10		      lda	#$10
+     32  1011		       8d 0f 90 	      sta	$900f
+     33  1014
+     34  1014		       a9 2e		      lda	#$2e
+     35  1016		       8d 03 90 	      sta	$9003
+     36  1019
+     37  1019		       a9 ff		      lda	#$ff
+     38  101b		       8d 05 90 	      sta	$9005
+     39  101e
+     40  101e		       a2 00		      ldx	#$00
+     41  1020		       86 83		      stx	$83
+     42  1022				   disp1
+     43  1022		       bd 00 88 	      lda	$8800,x
+     44  1025		       9d 00 1c 	      sta	$1c00,x
+     45  1028		       2a		      rol
+     46  1029		       1d 00 1c 	      ora	$1c00,x
+     47  102c		       9d 00 1c 	      sta	$1c00,x
+     48  102f
+     49  102f		       bd 00 89 	      lda	$8900,x
+     50  1032		       9d 00 1d 	      sta	$1d00,x
+     51  1035		       2a		      rol
+     52  1036		       1d 00 1d 	      ora	$1d00,x
+     53  1039		       9d 00 1d 	      sta	$1d00,x
+     54  103c
+     55  103c		       a9 00		      lda	#$00
+     56  103e		       9d 00 96 	      sta	$9600,x
+     57  1041		       9d 00 97 	      sta	$9700,x
+     58  1044		       bd a3 11 	      lda	character1,x
+     59  1047		       9d 00 1e 	      sta	$1e00,x
+     60  104a		       bd a3 12 	      lda	character2,x
+     61  104d		       9d 00 1f 	      sta	$1f00,x
+     62  1050		       e8		      inx
+     63  1051		       d0 cf		      bne	disp1
+     64  1053
+     65  1053		       a2 00		      ldx	#$00
+     66  1055		       86 71		      stx	$71
+     67  1057		       a9 02		      lda	#$02
+     68  1059		       85 70		      sta	$70
+     69  105b				   disp2
+     70  105b		       bd 5b 11 	      lda	tablehi,x
+     71  105e		       18		      clc
+     72  105f		       69 78		      adc	#$78
+     73  1061		       8d 7a 10 	      sta	plotcol+$02
+     74  1064		       bd 7f 11 	      lda	tablelo,x
+     75  1067		       e9 06		      sbc	#$06
+     76  1069		       dd 7f 11 	      cmp	tablelo,x
+     77  106c		       8d 79 10 	      sta	plotcol+$01
+     78  106f		       90 03		      bcc	colplot
+     79  1071		       ce 7a 10 	      dec	plotcol+$02
+     80  1074
+     81  1074				   colplot
+     82  1074		       a9 02		      lda	#$02
+     83  1076		       a0 04		      ldy	#$04
+     84  1078				   plotcol
+     85  1078		       99 00 96 	      sta	$9600,y
+     86  107b		       88		      dey
+     87  107c		       10 fa		      bpl	plotcol
+     88  107e
+     89  107e
+     90  107e		       c6 70		      dec	$70
+     91  1080		       a5 70		      lda	$70
+     92  1082		       10 13		      bpl	nocolc
+     93  1084
+     94  1084		       a9 02		      lda	#$02
+     95  1086		       85 70		      sta	$70
+     96  1088		       e6 71		      inc	$71
+     97  108a		       a5 71		      lda	$71
+     98  108c		       29 01		      and	#$01
+     99  108e		       85 71		      sta	$71
+    100  1090		       a8		      tay
+    101  1091		       b9 49 11 	      lda	coltab,y
+    102  1094		       8d 75 10 	      sta	colplot+$01
+    103  1097				   nocolc
+    104  1097		       e8		      inx
+    105  1098		       e0 24		      cpx	#$24
+    106  109a		       d0 bf		      bne	disp2
+    107  109c
+    108  109c		       18		      clc
+    109  109d		       a9 19		      lda	#>end-1
+    110  109f		       e9 16		      sbc	#$16
+    111  10a1		       20 34 11 	      jsr	gethex
+    112  10a4		       a5 80		      lda	$80
+    113  10a6		       8d e0 1f 	      sta	$1fe0
+    114  10a9		       a5 81		      lda	$81
+    115  10ab		       8d e1 1f 	      sta	$1fe1
+    116  10ae
+    117  10ae		       a9 ab		      lda	#<end-1
+    118  10b0		       20 34 11 	      jsr	gethex
+    119  10b3		       a5 80		      lda	$80
+    120  10b5		       8d e2 1f 	      sta	$1fe2
+    121  10b8		       a5 81		      lda	$81
+    122  10ba		       8d e3 1f 	      sta	$1fe3
+    123  10bd
+    124  10bd		       20 06 18 	      jsr	playinit
+    125  10c0
+    126  10c0				   rastz
+    127  10c0		       a0 50		      ldy	#$50
+    128  10c2				   rastz2
+    129  10c2		       cc 04 90 	      cpy	$9004
+    130  10c5		       d0 fb		      bne	rastz2
+    131  10c7		       ee 0f 90 	      inc	$900f
+    132  10ca		       20 0f 18 	      jsr	playit
+    133  10cd		       ce 0f 90 	      dec	$900f
+    134  10d0
+    135  10d0		       18		      clc
+    136  10d1		       ad 04 90 	      lda	$9004
+    137  10d4		       e9 48		      sbc	#$48
+    138  10d6		       85 82		      sta	$82
+    139  10d8		       c5 83		      cmp	$83
+    140  10da		       90 02		      bcc	notmore
+    141  10dc
+    142  10dc		       85 83		      sta	$83
+    143  10de
+    144  10de				   notmore
+    145  10de
+    146  10de		       a5 82		      lda	$82
+    147  10e0		       20 34 11 	      jsr	gethex
+    148  10e3		       a5 80		      lda	$80
+    149  10e5		       8d d4 1f 	      sta	$1fd4
+    150  10e8		       a5 81		      lda	$81
+    151  10ea		       8d d5 1f 	      sta	$1fd5
+    152  10ed
+    153  10ed		       a5 83		      lda	$83
+    154  10ef		       20 34 11 	      jsr	gethex
+    155  10f2		       a5 80		      lda	$80
+    156  10f4		       8d d7 1f 	      sta	$1fd7
+    157  10f7		       a5 81		      lda	$81
+    158  10f9		       8d d8 1f 	      sta	$1fd8
+    159  10fc
+    160  10fc		       18		      clc
+    161  10fd		       a2 00		      ldx	#$00
+    162  10ff				   tryit
+    163  10ff
+    164  10ff		       bd 5b 11 	      lda	tablehi,x
+    165  1102		       8d 26 11 	      sta	plot+$02
+    166  1105		       8d 2b 11 	      sta	plot2+$02
+    167  1108		       bd 7f 11 	      lda	tablelo,x
+    168  110b		       8d 25 11 	      sta	plot+$01
+    169  110e		       69 01		      adc	#$01
+    170  1110		       8d 2a 11 	      sta	plot2+$01
+    171  1113
+    172  1113		       e0 1d		      cpx	#$1d
+    173  1115		       90 06		      bcc	realdata
+    174  1117
+    175  1117		       bd f6 19 	      lda	pattpos-$1e,x
+    176  111a		       4c 1f 11 	      jmp	readhex
+    177  111d
+    178  111d				   realdata
+    179  111d		       b5 a0		      lda	dnote,x
+    180  111f				   readhex
+    181  111f		       20 34 11 	      jsr	gethex
+    182  1122		       a5 80		      lda	$80
+    183  1124				   plot
+    184  1124		       8d 00 1e 	      sta	$1e00
+    185  1127		       a5 81		      lda	$81
+    186  1129				   plot2
+    187  1129		       8d 16 1e 	      sta	$1e16
+    188  112c		       e8		      inx
+    189  112d		       e0 24		      cpx	#$24
+    190  112f		       d0 ce		      bne	tryit
+    191  1131		       4c c0 10 	      jmp	rastz
+    192  1134
+    193  1134				   gethex
+    194  1134		       48		      pha
+    195  1135
+    196  1135		       29 0f		      and	#$0f
+    197  1137		       a8		      tay
+    198  1138		       b9 4b 11 	      lda	hexchars,y
+    199  113b		       85 81		      sta	$81
+    200  113d
+    201  113d		       68		      pla
+    202  113e		       4a		      lsr
+    203  113f		       4a		      lsr
+    204  1140		       4a		      lsr
+    205  1141		       4a		      lsr
+    206  1142		       a8		      tay
+    207  1143		       b9 4b 11 	      lda	hexchars,y
+    208  1146		       85 80		      sta	$80
+    209  1148		       60		      rts
+    210  1149
+    211  1149
+    212  1149		       02 06	   coltab     .byte.b	$02,$06
+    213  114b
+    214  114b		       30 31 32 33*hexchars   .byte.b	$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$01,$02,$03,$04,$05,$06
+    215  115b
+    216  115b		       1e 1e 1e 1e*tablehi    .byte.b	$1e,$1e,$1e,$1e,$1e,$1e,$1e,$1e,$1e,$1e,$1e,$1f,$1f,$1f,$1f,$1f,$1f,$1f
+    217  116d		       1e 1e 1e 1e*	      .byte.b	$1e,$1e,$1e,$1e,$1e,$1e,$1e,$1e,$1e,$1e,$1f,$1f,$1f,$1f,$1f,$1f,$1f,$1f
+    218  117f
+    219  117f		       1e 34 4a 60*tablelo    .byte.b	$1e,$34,$4a,$60,$76,$8c,$a2,$b8,$ce,$e4,$fa,$10,$26,$3c,$52,$68,$7e,$94
+    220  1191		       2a 40 56 6c*	      .byte.b	$2a,$40,$56,$6c,$82,$98,$ae,$c4,$da,$f0,$06,$1c,$32,$48,$5e,$74,$8a,$a0
+    221  11a3
+    222  11a3				   character1
+    223  11a3
+    224  11a3		       20 20 20 20*	      .byte.b	$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20
+    225  11b9		       20 0e 0f 14*	      .byte.b	$20,$0e,$0f,$14,$05,$31,$20,$24,$20,$20,$20,$20,$20,$14,$12,$01,$0e,$31,$20,$24,$20,$20
+    226  11cf		       20 0e 0f 14*	      .byte.b	$20,$0e,$0f,$14,$05,$32,$20,$24,$20,$20,$20,$20,$20,$14,$12,$01,$0e,$32,$20,$24,$20,$20
+    227  11e5		       20 0e 0f 14*	      .byte.b	$20,$0e,$0f,$14,$05,$33,$20,$24,$20,$20,$20,$20,$20,$14,$12,$01,$0e,$33,$20,$24,$20,$20
+    228  11fb		       20 09 0e 13*	      .byte.b	$20,$09,$0e,$13,$14,$31,$20,$24,$20,$20,$20,$20,$20,$04,$05,$0c,$19,$31,$20,$24,$20,$20
+    229  1211		       20 09 0e 13*	      .byte.b	$20,$09,$0e,$13,$14,$32,$20,$24,$20,$20,$20,$20,$20,$04,$05,$0c,$19,$32,$20,$24,$20,$20
+    230  1227		       20 09 0e 13*	      .byte.b	$20,$09,$0e,$13,$14,$33,$20,$24,$20,$20,$20,$20,$20,$04,$05,$0c,$19,$33,$20,$24,$20,$20
+    231  123d		       20 09 0c 0f*	      .byte.b	$20,$09,$0c,$0f,$03,$31,$20,$24,$20,$20,$20,$20,$20,$14,$14,$12,$0e,$31,$20,$24,$20,$20
+    232  1253		       20 09 0c 0f*	      .byte.b	$20,$09,$0c,$0f,$03,$32,$20,$24,$20,$20,$20,$20,$20,$14,$14,$12,$0e,$32,$20,$24,$20,$20
+    233  1269		       20 09 0c 0f*	      .byte.b	$20,$09,$0c,$0f,$03,$33,$20,$24,$20,$20,$20,$20,$20,$14,$14,$12,$0e,$33,$20,$24,$20,$20
+    234  127f		       20 09 0c 05*	      .byte.b	$20,$09,$0c,$05,$0e,$31,$20,$24,$20,$20,$20,$20,$20,$16,$0f,$0c,$04,$03,$20,$24,$20,$20
+    235  1295		       20 09 0c 05*	      .byte.b	$20,$09,$0c,$05,$0e,$32,$20,$24,$20,$20,$20,$20,$20,$16
+    236  12a3
+    237  12a3
+    238  12a3				   character2
+    239  12a3
+    240  12a3		       0f 0c 04 0c*	      .byte.b	$0f,$0c,$04,$0c,$20,$24,$20,$20,$20,$09,$0c,$05,$0e,$33,$20,$24,$20,$20,$20,$20,$20,$16
+    241  12b9		       0f 0c 17 14*	      .byte.b	$0f,$0c,$17,$14,$20,$24,$20,$20,$20,$14,$0d,$10,$10,$31,$20,$24,$20,$20,$20,$20,$20,$10
+    242  12cf		       01 14 0e 31*	      .byte.b	$01,$14,$0e,$31,$20,$24,$20,$20,$20,$14,$0d,$10,$10,$32,$20,$24,$20,$20,$20,$20,$20,$10
+    243  12e5		       01 14 0e 32*	      .byte.b	$01,$14,$0e,$32,$20,$24,$20,$20,$20,$14,$0d,$10,$10,$33,$20,$24,$20,$20,$20,$20,$20,$10
+    244  12fb		       01 14 0e 33*	      .byte.b	$01,$14,$0e,$33,$20,$24,$20,$20,$20,$14,$0d,$10,$0e,$31,$20,$24,$20,$20,$20,$20,$20,$13
+    245  1311		       0f 0e 07 31*	      .byte.b	$0f,$0e,$07,$31,$20,$24,$20,$20,$20,$14,$0d,$10,$0e,$32,$20,$24,$20,$20,$20,$20,$20,$13
+    246  1327		       0f 0e 07 32*	      .byte.b	$0f,$0e,$07,$32,$20,$24,$20,$20,$20,$14,$0d,$10,$0e,$33,$20,$24,$20,$20,$20,$20,$20,$13
+    247  133d		       0f 0e 07 33*	      .byte.b	$0f,$0e,$07,$33,$20,$24,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20
+    248  1353		       20 20 20 20*	      .byte.b	$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$2a,$20,$16,$09,$03,$20,$10,$0c,$01,$19
+    249  1369		       20 09 09 20*	      .byte.b	$20,$09,$09,$20,$2a,$20,$20,$20,$14,$09,$0d,$05,$20,$24,$20,$20,$2f,$20,$20,$20,$13,$09
+    250  137f		       1a 05 20 24*	      .byte.b	$1a,$05,$20,$24,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20
+    251  1395		       20 20 20 20*	      .byte.b	$20,$20,$20,$20,$20,$20,$20,$20
+    252  139d
+------- FILE driver.asm LEVEL 2 PASS 2
+      0  139d					      include	"driver.asm"
+      1  139d							; Vic-20 Player 2 : 4mat/Orb 2007.
+      2  139d							;
+      3  139d							; Music driver.
+      4  139d							;
+      5  139d							; Use : jsr orgaddress   - init player.
+      6  139d							;	 jsr orgaddress+3 - player loop for each frame.
+      7  139d							;
+      8  139d							; There's possibly a bug with the song repeat command but I haven't
+      9  139d							; checked it 100%.  I've only heard it happen once in the 'Megademo Outro'
+     10  139d							; song, when it played through a few times.
+     11  139d							;
+     12  139d							; Compiles with DASM.
+     13  139d
+     14  139d					      processor	6502
+     15  139d
+     16  1800					      org	$1800
+     17  1800
+     18  1800		       00 a0	   dnote      =	$a0
+     19  1800		       00 a3	   instrument =	dnote + $03
+     20  1800		       00 a6	   instrloc   =	instrument + $03
+     21  1800		       00 a9	   instrlen   =	instrloc + $03
+     22  1800		       00 ac	   tempopat   =	instrlen + $03
+     23  1800		       00 af	   temponot   =	tempopat + $03
+     24  1800		       00 b2	   transsng   =	temponot + $03
+     25  1800		       00 b5	   delaysng   =	transsng + $03
+     26  1800		       00 b8	   temptrans  =	delaysng + $03
+     27  1800		       00 bb	   tempvol    =	temptrans+$03
+     28  1800		       00 bc	   voldelay   =	tempvol+$01
+     29  1800		       00 bd	   volwait    =	voldelay+$01
+     30  1800		       00 be	   temp       =	volwait+$01
+     31  1800		       00 bf	   tempvol2   =	temp+$01
+     32  1800
+     33  1800		       4c 06 18 	      jmp	playinit
+     34  1803		       4c 0f 18 	      jmp	playit
+     35  1806
+     36  1806				   playinit
+     37  1806		       a2 22		      ldx	#$22
+     38  1808		       a9 00		      lda	#$00
+     39  180a				   clearplay
+     40  180a		       95 a0		      sta	dnote,x
+     41  180c		       ca		      dex
+     42  180d		       10 fb		      bpl	clearplay
+     43  180f
+     44  180f				   playit
+     45  180f
+     46  180f		       a2 02		      ldx	#$02
+     47  1811				   noteloop
+     48  1811
+     49  1811		       ad 1f 1a 	      lda	ticks
+     50  1814		       10 61		      bpl	update
+     51  1816
+     52  1816				   updatesong
+     53  1816		       d6 af		      dec	temponot,x
+     54  1818		       b5 af		      lda	temponot,x
+     55  181a		       10 5b		      bpl	update
+     56  181c
+     57  181c				   updatecont
+     58  181c		       bc 14 1a 	      ldy	pattpos,x
+     59  181f		       b9 99 19 	      lda	patttab,y
+     60  1822		       c9 2f		      cmp	#$2f
+     61  1824		       90 18		      bcc	justanote
+     62  1826
+     63  1826				   instrumentfx
+     64  1826		       c9 f0		      cmp	#$f0
+     65  1828		       29 0f		      and	#$0f
+     66  182a		       b0 0a		      bcs	newinstrument
+     67  182c		       95 ac		      sta	tempopat,x
+     68  182e		       95 af		      sta	temponot,x
+     69  1830				   firstupdate
+     70  1830		       fe 14 1a 	      inc	pattpos,x
+     71  1833		       4c 1c 18 	      jmp	updatecont
+     72  1836
+     73  1836
+     74  1836				   newinstrument
+     75  1836		       95 a3		      sta	instrument,x
+     76  1838		       fe 14 1a 	      inc	pattpos,x
+     77  183b		       4c 1c 18 	      jmp	updatecont
+     78  183e
+     79  183e
+     80  183e				   justanote
+     81  183e
+     82  183e
+     83  183e		       95 a0		      sta	dnote,x
+     84  1840
+     85  1840		       b5 b8		      lda	temptrans,x
+     86  1842		       95 b2		      sta	transsng,x
+     87  1844		       b5 ac		      lda	tempopat,x
+     88  1846		       95 af		      sta	temponot,x
+     89  1848
+     90  1848		       fe 14 1a 	      inc	pattpos,x
+     91  184b		       b5 a0		      lda	dnote,x
+     92  184d		       f0 28		      beq	update
+     93  184f
+     94  184f		       b4 a3		      ldy	instrument,x
+     95  1851
+     96  1851
+     97  1851		       b9 2a 1a 	      lda	notelen,y
+     98  1854		       29 7f		      and	#$7f
+     99  1856		       95 a9		      sta	instrlen,x
+    100  1858
+    101  1858		       b9 21 1a 	      lda	inststart,y
+    102  185b		       95 a6		      sta	instrloc,x
+    103  185d		       d6 a6		      dec	instrloc,x
+    104  185f
+    105  185f				   usualvolset
+    106  185f
+    107  185f
+    108  185f		       b9 33 1a 	      lda	volbyte,y
+    109  1862		       f0 13		      beq	update
+    110  1864		       4a		      lsr
+    111  1865		       4a		      lsr
+    112  1866		       4a		      lsr
+    113  1867				   bigwaiting
+    114  1867		       85 bc		      sta	voldelay
+    115  1869		       85 bd		      sta	volwait
+    116  186b
+    117  186b		       b9 3c 1a 	      lda	volamount,y
+    118  186e		       85 bb		      sta	tempvol
+    119  1870
+    120  1870		       b9 33 1a 	      lda	volbyte,y
+    121  1873		       29 0f		      and	#$0f
+    122  1875		       85 bf		      sta	tempvol2
+    123  1877
+    124  1877
+    125  1877
+    126  1877				   update
+    127  1877		       f6 a6		      inc	instrloc,x
+    128  1879
+    129  1879		       b5 a9		      lda	instrlen,x
+    130  187b		       d0 13		      bne	playing
+    131  187d		       a9 00		      lda	#$00
+    132  187f		       95 a0		      sta	dnote,x
+    133  1881		       9d 0a 90 	      sta	$900a,x
+    134  1884		       b4 a3		      ldy	instrument,x
+    135  1886		       b9 2a 1a 	      lda	notelen,y
+    136  1889		       10 07		      bpl	nodecing
+    137  188b		       a9 00		      lda	#$00
+    138  188d		       8d 0d 90 	      sta	$900d
+    139  1890
+    140  1890
+    141  1890				   playing
+    142  1890
+    143  1890		       d6 a9		      dec	instrlen,x
+    144  1892
+    145  1892				   nodecing
+    146  1892		       b5 b2		      lda	transsng,x
+    147  1894		       85 be		      sta	temp
+    148  1896
+    149  1896		       b5 a0		      lda	dnote,x
+    150  1898		       f0 50		      beq	playnote
+    151  189a
+    152  189a
+    153  189a				   getinst
+    154  189a
+    155  189a
+    156  189a		       b4 a3		      ldy	instrument,x
+    157  189c
+    158  189c		       b9 2a 1a 	      lda	notelen,y
+    159  189f		       10 0a		      bpl	nonoise
+    160  18a1		       b4 a6		      ldy	instrloc,x
+    161  18a3		       b9 45 1a 	      lda	insttab,y
+    162  18a6		       8d 0d 90 	      sta	$900d
+    163  18a9		       f6 a6		      inc	instrloc,x
+    164  18ab				   nonoise
+    165  18ab
+    166  18ab		       b4 a6		      ldy	instrloc,x
+    167  18ad		       b9 45 1a 	      lda	insttab,y
+    168  18b0		       29 10		      and	#$10
+    169  18b2		       f0 05		      beq	nofancy2
+    170  18b4
+    171  18b4		       a9 7f		      lda	#$7f
+    172  18b6		       9d 0a 90 	      sta	$900a,x
+    173  18b9				   nofancy2
+    174  18b9
+    175  18b9		       b9 45 1a 	      lda	insttab,y
+    176  18bc		       c9 7f		      cmp	#$7f
+    177  18be		       b0 2a		      bcs	playnote
+    178  18c0		       c9 5f		      cmp	#$5f
+    179  18c2		       90 0b		      bcc	arpeggio
+    180  18c4		       29 0f		      and	#$0f
+    181  18c6		       f5 a6		      sbc	instrloc,x
+    182  18c8		       49 ff		      eor	#$ff
+    183  18ca		       95 a6		      sta	instrloc,x
+    184  18cc		       4c 9a 18 	      jmp	getinst
+    185  18cf
+    186  18cf				   arpeggio
+    187  18cf		       48		      pha
+    188  18d0		       29 0f		      and	#$0f
+    189  18d2		       65 be		      adc	temp
+    190  18d4		       85 be		      sta	temp
+    191  18d6
+    192  18d6
+    193  18d6		       68		      pla
+    194  18d7		       29 10		      and	#$10
+    195  18d9		       f0 06		      beq	nofancyness
+    196  18db
+    197  18db		       bd 96 19 	      lda	masks,x
+    198  18de		       9d 0a 90 	      sta	$900a,x
+    199  18e1
+    200  18e1				   nofancyness
+    201  18e1
+    202  18e1
+    203  18e1
+    204  18e1		       b5 a0		      lda	dnote,x
+    205  18e3		       18		      clc
+    206  18e4		       65 be		      adc	temp
+    207  18e6		       a8		      tay
+    208  18e7		       b9 6e 19 	      lda	freqtab,y
+    209  18ea				   playnote
+    210  18ea		       9d 0a 90 	      sta	$900a,x
+    211  18ed
+    212  18ed
+    213  18ed		       ca		      dex
+    214  18ee		       30 03		      bmi	doneloop
+    215  18f0		       4c 11 18 	      jmp	noteloop
+    216  18f3
+    217  18f3				   doneloop
+    218  18f3
+    219  18f3		       c6 bc		      dec	voldelay
+    220  18f5		       10 0a		      bpl	volisgood
+    221  18f7		       a5 bd		      lda	volwait
+    222  18f9		       85 bc		      sta	voldelay
+    223  18fb
+    224  18fb		       a5 bf		      lda	tempvol2
+    225  18fd		       e5 bb		      sbc	tempvol
+    226  18ff		       85 bf		      sta	tempvol2
+    227  1901
+    228  1901				   volisgood
+    229  1901
+    230  1901		       ad 0e 90 	      lda	$900e
+    231  1904		       29 f0		      and	#$f0
+    232  1906		       05 bf		      ora	tempvol2
+    233  1908		       8d 0e 90 	      sta	$900e
+    234  190b
+    235  190b		       ad 1f 1a 	      lda	ticks
+    236  190e		       30 17		      bmi	istheend
+    237  1910
+    238  1910
+    239  1910
+    240  1910				   checkforend
+    241  1910		       ae 1f 1a 	      ldx	ticks
+    242  1913		       ce 1f 1a 	      dec	ticks
+    243  1916		       e0 03		      cpx	#$03
+    244  1918		       b0 1f		      bcs	outta
+    245  191a		       bc 14 1a 	      ldy	pattpos,x
+    246  191d		       b9 99 19 	      lda	patttab,y
+    247  1920		       c9 7f		      cmp	#$7f
+    248  1922		       d0 02		      bne	nonewone
+    249  1924		       10 17		      bpl	getpat
+    250  1926				   nonewone
+    251  1926		       60		      rts
+    252  1927
+    253  1927				   istheend
+    254  1927		       ee 20 1a 	      inc	tempotick
+    255  192a		       ad 20 1a 	      lda	tempotick
+    256  192d		       29 01		      and	#$01
+    257  192f		       8d 20 1a 	      sta	tempotick
+    258  1932		       a8		      tay
+    259  1933		       b9 1d 1a 	      lda	tempo,y
+    260  1936		       8d 1f 1a 	      sta	ticks
+    261  1939				   outta
+    262  1939		       60		      rts
+    263  193a
+    264  193a
+    265  193a
+    266  193a				   getsong0
+    267  193a		       fe 17 1a 	      inc	songpos,x
+    268  193d
+    269  193d				   getpat
+    270  193d
+    271  193d		       bc 17 1a 	      ldy	songpos,x
+    272  1940		       b9 fd 19 	      lda	songtab,y
+    273  1943		       c9 ff		      cmp	#$ff
+    274  1945		       d0 08		      bne	nopatreset
+    275  1947
+    276  1947		       bd 1a 1a 	      lda	songstart,x
+    277  194a		       9d 17 1a 	      sta	songpos,x
+    278  194d		       10 ee		      bpl	getpat
+    279  194f
+    280  194f				   nopatreset
+    281  194f		       c9 e0		      cmp	#$e0
+    282  1951		       b0 0b		      bcs	songeffect
+    283  1953		       9d 14 1a 	      sta	pattpos,x
+    284  1956		       d6 b5		      dec	delaysng,x
+    285  1958		       10 03		      bpl	notnewpat
+    286  195a		       fe 17 1a 	      inc	songpos,x
+    287  195d
+    288  195d				   notnewpat
+    289  195d		       60		      rts
+    290  195e
+    291  195e
+    292  195e				   songeffect
+    293  195e		       c9 f0		      cmp	#$f0
+    294  1960		       b0 06		      bcs	setglobaltran
+    295  1962		       29 0f		      and	#$0f
+    296  1964		       95 b5		      sta	delaysng,x
+    297  1966		       10 d2		      bpl	getsong0
+    298  1968
+    299  1968
+    300  1968				   setglobaltran
+    301  1968		       29 0f		      and	#$0f
+    302  196a		       95 b8		      sta	temptrans,x
+    303  196c		       10 cc		      bpl	getsong0
+    304  196e
+    305  196e							; Frequency Table. (Vic-20 only has 7bit range, which goes out of tune a lot.
+    306  196e							;		     You may find it useful to tweak these values.)
+    307  196e
+    308  196e				   freqtab
+    309  196e		       00		      .byte.b	0
+    310  196f		       87 8f 93 97*	      .byte.b	135,143,147,151,159,163,167,175,179,183,187,191
+    311  197b		       c3 c7 c9 cb*	      .byte.b	195,199,201,203,207,209,212,215,217,219,221,223
+    312  1987		       e1 e3 e4 e5*	      .byte.b	225,227,228,229,231,232,233,235,236,237,238,239
+    313  1993		       f0 f1 f2 	      .byte.b	240,241,242
+    314  1996
+    315  1996							; Mask settings for Wave fx on each channel.
+    316  1996
+    317  1996		       fe fd fb    masks      .byte.b	$fe,$fd,$fb
+    318  1999
+------- FILE data.asm LEVEL 3 PASS 2
+      0  1999					      include	"data.asm"
+      1  1999							; Vic-20 Player 2 : 4mat/Orb 2007.
+      2  1999							;
+      3  1999							; Music data. Test tune is "Megademo: Bumpmap screen"
+      4  1999							;
+      5  1999							; Compiles with DASM.
+      6  1999
+      7  1999		       00 00	   rest       equ	$00
+      8  1999		       00 01	   cn1	      equ	$01
+      9  1999		       00 02	   cs1	      equ	$02
+     10  1999		       00 03	   dn1	      equ	$03
+     11  1999		       00 04	   ds1	      equ	$04
+     12  1999		       00 05	   en1	      equ	$05
+     13  1999		       00 06	   fn1	      equ	$06
+     14  1999		       00 07	   fs1	      equ	$07
+     15  1999		       00 08	   gn1	      equ	$08
+     16  1999		       00 09	   gs1	      equ	$09
+     17  1999		       00 0a	   an1	      equ	$0a
+     18  1999		       00 0b	   as1	      equ	$0b
+     19  1999		       00 0c	   bn1	      equ	$0c
+     20  1999		       00 0d	   cn2	      equ	$0d
+     21  1999		       00 0e	   cs2	      equ	$0e
+     22  1999		       00 0f	   dn2	      equ	$0f
+     23  1999		       00 10	   ds2	      equ	$10
+     24  1999		       00 11	   en2	      equ	$11
+     25  1999		       00 12	   fn2	      equ	$12
+     26  1999		       00 13	   fs2	      equ	$13
+     27  1999		       00 14	   gn2	      equ	$14
+     28  1999		       00 15	   gs2	      equ	$15
+     29  1999		       00 16	   an2	      equ	$16
+     30  1999		       00 17	   as2	      equ	$17
+     31  1999		       00 18	   bn2	      equ	$18
+     32  1999		       00 19	   cn3	      equ	$19
+     33  1999		       00 1a	   cs3	      equ	$1a
+     34  1999		       00 1b	   dn3	      equ	$1b
+     35  1999		       00 1c	   ds3	      equ	$1c
+     36  1999		       00 1d	   en3	      equ	$1d
+     37  1999		       00 1e	   fn3	      equ	$1e
+     38  1999		       00 1f	   fs3	      equ	$1f
+     39  1999		       00 20	   gn3	      equ	$20
+     40  1999		       00 21	   gs3	      equ	$21
+     41  1999		       00 22	   an3	      equ	$22
+     42  1999		       00 23	   as3	      equ	$23
+     43  1999		       00 24	   bn3	      equ	$24
+     44  1999		       00 25	   cn4	      equ	$25
+     45  1999		       00 26	   cs4	      equ	$26
+     46  1999		       00 27	   dn4	      equ	$27
+     47  1999		       00 7f	   stop_pattern equ	$7f
+     48  1999		       00 80	   nl1	      equ	$80
+     49  1999		       00 81	   nl2	      equ	$81
+     50  1999		       00 82	   nl3	      equ	$82
+     51  1999		       00 83	   nl4	      equ	$83
+     52  1999		       00 84	   nl5	      equ	$84
+     53  1999		       00 85	   nl6	      equ	$85
+     54  1999		       00 86	   nl7	      equ	$86
+     55  1999		       00 87	   nl8	      equ	$87
+     56  1999		       00 88	   nl9	      equ	$88
+     57  1999		       00 89	   nla	      equ	$89
+     58  1999		       00 8a	   nlb	      equ	$8a
+     59  1999		       00 8b	   nlc	      equ	$8b
+     60  1999		       00 8c	   nld	      equ	$8c
+     61  1999		       00 8d	   nle	      equ	$8d
+     62  1999		       00 8e	   nlf	      equ	$8e
+     63  1999		       00 8f	   nl10       equ	$8f
+     64  1999		       00 f0	   in0	      equ	$f0
+     65  1999		       00 f1	   in1	      equ	$f1
+     66  1999		       00 f2	   in2	      equ	$f2
+     67  1999		       00 f3	   in3	      equ	$f3
+     68  1999		       00 f4	   in4	      equ	$f4
+     69  1999		       00 f5	   in5	      equ	$f5
+     70  1999		       00 f6	   in6	      equ	$f6
+     71  1999		       00 f7	   in7	      equ	$f7
+     72  1999		       00 f8	   in8	      equ	$f8
+     73  1999		       00 f9	   in9	      equ	$f9
+     74  1999		       00 fa	   ina	      equ	$fa
+     75  1999		       00 fb	   inb	      equ	$fb
+     76  1999		       00 fc	   inc	      equ	$fc
+     77  1999		       00 fd	   ind	      equ	$fd
+     78  1999		       00 fe	   ine	      equ	$fe
+     79  1999		       00 ff	   inf	      equ	$ff
+     80  1999		       00 e0	   rp1	      equ	$e0
+     81  1999		       00 e1	   rp2	      equ	$e1
+     82  1999		       00 e2	   rp3	      equ	$e2
+     83  1999		       00 e3	   rp4	      equ	$e3
+     84  1999		       00 e4	   rp5	      equ	$e4
+     85  1999		       00 e5	   rp6	      equ	$e5
+     86  1999		       00 e6	   rp7	      equ	$e6
+     87  1999		       00 e7	   rp8	      equ	$e7
+     88  1999		       00 e8	   rp9	      equ	$e8
+     89  1999		       00 e9	   rpa	      equ	$e9
+     90  1999		       00 ea	   rpb	      equ	$ea
+     91  1999		       00 eb	   rpc	      equ	$eb
+     92  1999		       00 ec	   rpd	      equ	$ec
+     93  1999		       00 ed	   rpe	      equ	$ed
+     94  1999		       00 ee	   rpf	      equ	$ee
+     95  1999		       00 ef	   rp10       equ	$ef
+     96  1999		       00 f0	   tr0	      equ	$f0
+     97  1999		       00 f1	   tr1	      equ	$f1
+     98  1999		       00 f2	   tr2	      equ	$f2
+     99  1999		       00 f3	   tr3	      equ	$f3
+    100  1999		       00 f4	   tr4	      equ	$f4
+    101  1999		       00 f5	   tr5	      equ	$f5
+    102  1999		       00 f6	   tr6	      equ	$f6
+    103  1999		       00 f7	   tr7	      equ	$f7
+    104  1999		       00 f8	   tr8	      equ	$f8
+    105  1999		       00 f9	   tr9	      equ	$f9
+    106  1999		       00 fa	   tra	      equ	$fa
+    107  1999		       00 fb	   trb	      equ	$fb
+    108  1999		       00 fc	   trc	      equ	$fc
+    109  1999		       00 fd	   trd	      equ	$fd
+    110  1999		       00 fe	   tre	      equ	$fe
+    111  1999		       00 ff	   song_end   equ	$ff
+    112  1999		       00 00	   note       equ	$00
+    113  1999		       00 01	   arp1       equ	$01
+    114  1999		       00 02	   arp2       equ	$02
+    115  1999		       00 03	   arp3       equ	$03
+    116  1999		       00 04	   arp4       equ	$04
+    117  1999		       00 05	   arp5       equ	$05
+    118  1999		       00 06	   arp6       equ	$06
+    119  1999		       00 07	   arp7       equ	$07
+    120  1999		       00 08	   arp8       equ	$08
+    121  1999		       00 09	   arp9       equ	$09
+    122  1999		       00 0a	   arpa       equ	$0a
+    123  1999		       00 0b	   arpb       equ	$0b
+    124  1999		       00 0c	   arpc       equ	$0c
+    125  1999		       00 0d	   arpd       equ	$0d
+    126  1999		       00 0e	   arpe       equ	$0e
+    127  1999		       00 0f	   arpf       equ	$0f
+    128  1999		       00 10	   wav	      equ	$10
+    129  1999		       00 11	   wav1       equ	$11
+    130  1999		       00 12	   wav2       equ	$12
+    131  1999		       00 13	   wav3       equ	$13
+    132  1999		       00 14	   wav4       equ	$14
+    133  1999		       00 15	   wav5       equ	$15
+    134  1999		       00 16	   wav6       equ	$16
+    135  1999		       00 17	   wav7       equ	$17
+    136  1999		       00 18	   wav8       equ	$18
+    137  1999		       00 19	   wav9       equ	$19
+    138  1999		       00 1a	   wava       equ	$1a
+    139  1999		       00 1b	   wavb       equ	$1b
+    140  1999		       00 1c	   wavc       equ	$1c
+    141  1999		       00 1d	   wavd       equ	$1d
+    142  1999		       00 1e	   wave       equ	$1e
+    143  1999		       00 1f	   wavf       equ	$1f
+    144  1999		       00 60	   loopback1  equ	$60
+    145  1999		       00 61	   loopback2  equ	$61
+    146  1999		       00 62	   loopback3  equ	$62
+    147  1999		       00 63	   loopback4  equ	$63
+    148  1999		       00 64	   loopback5  equ	$64
+    149  1999		       00 65	   loopback6  equ	$65
+    150  1999		       00 66	   loopback7  equ	$66
+    151  1999		       00 67	   loopback8  equ	$67
+    152  1999		       00 68	   loopback9  equ	$68
+    153  1999		       00 69	   loopbacka  equ	$69
+    154  1999		       00 6a	   loopbackb  equ	$6a
+    155  1999		       00 6b	   loopbackc  equ	$6b
+    156  1999		       00 6c	   loopbackd  equ	$6c
+    157  1999		       00 6d	   loopbacke  equ	$6d
+    158  1999		       00 6e	   loopbackf  equ	$6e
+    159  1999		       00 6f	   loopback10 equ	$6f
+    160  1999		       00 7f	   off	      equ	$7f
+    161  1999
+    162  1999
+    163  1999				   patttab
+    164  1999							; blank (used for song startup)
+    165  1999		       00		      .byte.b	rest
+    166  199a		       7f		      .byte.b	stop_pattern
+    167  199b
+    168  199b							; drums (just bdrum and hihat)
+    169  199b		       81		      .byte.b	nl2
+    170  199c		       f1		      .byte.b	in1
+    171  199d		       05		      .byte.b	en1
+    172  199e		       80		      .byte.b	nl1
+    173  199f		       f3		      .byte.b	in3
+    174  19a0		       05		      .byte.b	en1
+    175  19a1		       05		      .byte.b	en1
+    176  19a2		       f1		      .byte.b	in1
+    177  19a3		       05		      .byte.b	en1
+    178  19a4		       81		      .byte.b	nl2
+    179  19a5		       f3		      .byte.b	in3
+    180  19a6		       05		      .byte.b	en1
+    181  19a7		       80		      .byte.b	nl1
+    182  19a8		       05		      .byte.b	en1
+    183  19a9		       7f		      .byte.b	stop_pattern
+    184  19aa
+    185  19aa							; bass
+    186  19aa		       8f		      .byte.b	nl10
+    187  19ab		       01		      .byte.b	cn1
+    188  19ac		       87		      .byte.b	nl8
+    189  19ad		       01		      .byte.b	cn1
+    190  19ae		       03		      .byte.b	dn1
+    191  19af		       8f		      .byte.b	nl10
+    192  19b0		       04		      .byte.b	ds1
+    193  19b1		       87		      .byte.b	nl8
+    194  19b2		       04		      .byte.b	ds1
+    195  19b3		       06		      .byte.b	fn1
+    196  19b4		       8f		      .byte.b	nl10
+    197  19b5		       08		      .byte.b	gn1
+    198  19b6		       87		      .byte.b	nl8
+    199  19b7		       08		      .byte.b	gn1
+    200  19b8		       09		      .byte.b	gs1
+    201  19b9		       8f		      .byte.b	nl10
+    202  19ba		       0b		      .byte.b	as1
+    203  19bb		       87		      .byte.b	nl8
+    204  19bc		       0b		      .byte.b	as1
+    205  19bd		       0c		      .byte.b	bn1
+    206  19be		       7f		      .byte.b	stop_pattern
+    207  19bf
+    208  19bf							; chords
+    209  19bf		       8f		      .byte.b	nl10
+    210  19c0		       f4		      .byte.b	in4
+    211  19c1		       0d		      .byte.b	cn2
+    212  19c2		       87		      .byte.b	nl8
+    213  19c3		       0d		      .byte.b	cn2
+    214  19c4		       f5		      .byte.b	in5
+    215  19c5		       0b		      .byte.b	as1
+    216  19c6		       8f		      .byte.b	nl10
+    217  19c7		       f6		      .byte.b	in6
+    218  19c8		       0b		      .byte.b	as1
+    219  19c9		       87		      .byte.b	nl8
+    220  19ca		       0b		      .byte.b	as1
+    221  19cb		       f5		      .byte.b	in5
+    222  19cc		       0b		      .byte.b	as1
+    223  19cd		       8f		      .byte.b	nl10
+    224  19ce		       f6		      .byte.b	in6
+    225  19cf		       0b		      .byte.b	as1
+    226  19d0		       87		      .byte.b	nl8
+    227  19d1		       0b		      .byte.b	as1
+    228  19d2		       f5		      .byte.b	in5
+    229  19d3		       09		      .byte.b	gs1
+    230  19d4		       8f		      .byte.b	nl10
+    231  19d5		       f5		      .byte.b	in5
+    232  19d6		       04		      .byte.b	ds1
+    233  19d7		       87		      .byte.b	nl8
+    234  19d8		       04		      .byte.b	ds1
+    235  19d9		       f6		      .byte.b	in6
+    236  19da		       03		      .byte.b	dn1
+    237  19db		       7f		      .byte.b	stop_pattern
+    238  19dc
+    239  19dc							; intro cowbells
+    240  19dc		       8f		      .byte.b	nl10
+    241  19dd		       f0		      .byte.b	in0
+    242  19de		       19		      .byte.b	cn3
+    243  19df		       19		      .byte.b	cn3
+    244  19e0		       19		      .byte.b	cn3
+    245  19e1		       19		      .byte.b	cn3
+    246  19e2		       7f		      .byte.b	stop_pattern
+    247  19e3
+    248  19e3							; bass intro
+    249  19e3		       8f		      .byte.b	nl10
+    250  19e4		       f2		      .byte.b	in2
+    251  19e5		       01		      .byte.b	cn1
+    252  19e6		       01		      .byte.b	cn1
+    253  19e7		       0d		      .byte.b	cn2
+    254  19e8		       0d		      .byte.b	cn2
+    255  19e9		       7f		      .byte.b	stop_pattern
+    256  19ea
+    257  19ea							; drums with snare
+    258  19ea		       81		      .byte.b	nl2
+    259  19eb		       f1		      .byte.b	in1
+    260  19ec		       05		      .byte.b	en1
+    261  19ed		       80		      .byte.b	nl1
+    262  19ee		       f3		      .byte.b	in3
+    263  19ef		       05		      .byte.b	en1
+    264  19f0		       05		      .byte.b	en1
+    265  19f1		       f7		      .byte.b	in7
+    266  19f2		       05		      .byte.b	en1
+    267  19f3		       81		      .byte.b	nl2
+    268  19f4		       f3		      .byte.b	in3
+    269  19f5		       05		      .byte.b	en1
+    270  19f6		       80		      .byte.b	nl1
+    271  19f7		       05		      .byte.b	en1
+    272  19f8		       7f		      .byte.b	stop_pattern
+    273  19f9
+    274  19f9							; bass outro
+    275  19f9		       8f		      .byte.b	nl10
+    276  19fa		       f8		      .byte.b	in8
+    277  19fb		       01		      .byte.b	cn1
+    278  19fc		       7f		      .byte.b	stop_pattern
+    279  19fd
+    280  19fd
+    281  19fd
+    282  19fd				   songtab
+    283  19fd							; channel 1 (position : $00)
+    284  19fd		       4a		      .byte.b	$4a
+    285  19fe		       11		      .byte.b	$11
+    286  19ff		       fc		      .byte.b	trc
+    287  1a00		       11		      .byte.b	$11
+    288  1a01		       f0		      .byte.b	tr0
+    289  1a02		       60		      .byte.b	$60
+    290  1a03		       4d		      .byte.b	$4d
+    291  1a04		       ff		      .byte.b	song_end
+    292  1a05
+    293  1a05							; channel 2 (position : $08)
+    294  1a05		       e7		      .byte.b	rp8
+    295  1a06		       02		      .byte.b	$02
+    296  1a07		       ef		      .byte.b	rp10
+    297  1a08		       02		      .byte.b	$02
+    298  1a09		       ef		      .byte.b	rp10
+    299  1a0a		       51		      .byte.b	$51
+    300  1a0b		       ff		      .byte.b	song_end
+    301  1a0c
+    302  1a0c							; channel 3 (position : $0f)
+    303  1a0c		       43		      .byte.b	$43
+    304  1a0d		       f0		      .byte.b	tr0
+    305  1a0e		       26		      .byte.b	$26
+    306  1a0f		       26		      .byte.b	$26
+    307  1a10		       f0		      .byte.b	tr0
+    308  1a11		       43		      .byte.b	$43
+    309  1a12		       fc		      .byte.b	trc
+    310  1a13		       ff		      .byte.b	song_end
+    311  1a14
+    312  1a14
+    313  1a14
+    314  1a14		       01 01 01    pattpos    .byte.b	$01,$01,$01
+    315  1a17		       00 08 0f    songpos    .byte.b	$00,$08,$0f
+    316  1a1a		       01 0c 11    songstart  .byte.b	$01,$0c,$11
+    317  1a1d
+    318  1a1d
+    319  1a1d
+    320  1a1d		       03 04	   tempo      .byte.b	$03,$04
+    321  1a1f		       03	   ticks      .byte.b	$03
+    322  1a20		       01	   tempotick  .byte.b	$01
+    323  1a21
+    324  1a21
+    325  1a21							; Inst number:    0   1   2   3   4   5   6   7   8
+    326  1a21		       45 02 0c 17*inststart  .byte.b	$45,$02,$0c,$17,$1f,$29,$33,$3d,$56
+    327  1a2a		       2f 85 7f 82*notelen    .byte.b	$2f,$85,$7f,$82,$7f,$7f,$7f,$85,$3f
+    328  1a33		       f0 2f 00 28*volbyte    .byte.b	$f0,$2f,$00,$28,$37,$37,$37,$2f,$0f
+    329  1a3c		       0f 03 00 01*volamount  .byte.b	$0f,$03,$00,$01,$02,$02,$02,$03,$20
+    330  1a45
+    331  1a45
+    332  1a45
+    333  1a45				   insttab
+    334  1a45
+    335  1a45							; Channel switched off, repeating on previous frame.
+    336  1a45		       7f		      .byte.b	off
+    337  1a46		       60		      .byte.b	loopback1
+    338  1a47
+    339  1a47							; Bass drum, using the noise channel so 2 bytes for each frame tick.
+    340  1a47							; Also you can see I'm setting the pitch of the tone channel with bytes >$80
+    341  1a47		       fe		      .byte.b	$fe
+    342  1a48		       ca		      .byte.b	$ca
+    343  1a49		       dd		      .byte.b	$dd
+    344  1a4a		       a8		      .byte.b	$a8
+    345  1a4b		       a0		      .byte.b	$a0
+    346  1a4c		       97		      .byte.b	$97
+    347  1a4d		       7f		      .byte.b	off
+    348  1a4e		       7f		      .byte.b	off
+    349  1a4f		       00		      .byte.b	note
+    350  1a50		       62		      .byte.b	loopback3
+    351  1a51
+    352  1a51							; Bass sound, using arpeggios, goes back 7 frames every time it loops.
+    353  1a51		       00		      .byte.b	note
+    354  1a52		       00		      .byte.b	note
+    355  1a53		       00		      .byte.b	note
+    356  1a54		       00		      .byte.b	note
+    357  1a55		       00		      .byte.b	note
+    358  1a56		       00		      .byte.b	note
+    359  1a57		       00		      .byte.b	note
+    360  1a58		       0c		      .byte.b	arpc
+    361  1a59		       0c		      .byte.b	arpc
+    362  1a5a		       0c		      .byte.b	arpc
+    363  1a5b		       66		      .byte.b	loopback7
+    364  1a5c
+    365  1a5c							; The 'hihat' sound, uses noise channel.
+    366  1a5c		       fe		      .byte.b	$fe
+    367  1a5d		       ef		      .byte.b	$ef
+    368  1a5e		       f8		      .byte.b	$f8
+    369  1a5f		       f5		      .byte.b	$f5
+    370  1a60		       fe		      .byte.b	$fe
+    371  1a61		       ef		      .byte.b	$ef
+    372  1a62		       00		      .byte.b	note
+    373  1a63		       64		      .byte.b	loopback5
+    374  1a64
+    375  1a64							; Arpeggios, with wave fx.
+    376  1a64		       1c		      .byte.b	wavc
+    377  1a65		       1c		      .byte.b	wavc
+    378  1a66		       17		      .byte.b	wav7
+    379  1a67		       07		      .byte.b	arp7
+    380  1a68		       03		      .byte.b	arp3
+    381  1a69		       03		      .byte.b	arp3
+    382  1a6a		       00		      .byte.b	note
+    383  1a6b		       10		      .byte.b	wav
+    384  1a6c		       00		      .byte.b	note
+    385  1a6d		       68		      .byte.b	loopback9
+    386  1a6e
+    387  1a6e		       1c		      .byte.b	wavc
+    388  1a6f		       1c		      .byte.b	wavc
+    389  1a70		       17		      .byte.b	wav7
+    390  1a71		       07		      .byte.b	arp7
+    391  1a72		       04		      .byte.b	arp4
+    392  1a73		       04		      .byte.b	arp4
+    393  1a74		       00		      .byte.b	note
+    394  1a75		       10		      .byte.b	wav
+    395  1a76		       00		      .byte.b	note
+    396  1a77		       68		      .byte.b	loopback9
+    397  1a78
+    398  1a78		       1c		      .byte.b	wavc
+    399  1a79		       1c		      .byte.b	wavc
+    400  1a7a		       19		      .byte.b	wav9
+    401  1a7b		       09		      .byte.b	arp9
+    402  1a7c		       05		      .byte.b	arp5
+    403  1a7d		       05		      .byte.b	arp5
+    404  1a7e		       00		      .byte.b	note
+    405  1a7f		       10		      .byte.b	wav
+    406  1a80		       00		      .byte.b	note
+    407  1a81		       68		      .byte.b	loopback9
+    408  1a82
+    409  1a82							; Snare drum, using noise channel, ends on the highest noise pitch with the tone
+    410  1a82							; channel switched off. (off)
+    411  1a82		       fd		      .byte.b	$fd
+    412  1a83		       ca		      .byte.b	$ca
+    413  1a84		       dd		      .byte.b	$dd
+    414  1a85		       a8		      .byte.b	$a8
+    415  1a86		       fe		      .byte.b	$fe
+    416  1a87		       7f		      .byte.b	off
+    417  1a88		       00		      .byte.b	note
+    418  1a89		       62		      .byte.b	loopback3
+    419  1a8a
+    420  1a8a							; Other sounds, using off to turn off the note for an echo effect.
+    421  1a8a		       00		      .byte.b	note
+    422  1a8b		       00		      .byte.b	note
+    423  1a8c		       eb		      .byte.b	235
+    424  1a8d		       eb		      .byte.b	235
+    425  1a8e		       00		      .byte.b	note
+    426  1a8f		       00		      .byte.b	note
+    427  1a90		       7f		      .byte.b	off
+    428  1a91		       7f		      .byte.b	off
+    429  1a92		       7f		      .byte.b	off
+    430  1a93		       7f		      .byte.b	off
+    431  1a94		       7f		      .byte.b	off
+    432  1a95		       7f		      .byte.b	off
+    433  1a96		       7f		      .byte.b	off
+    434  1a97		       7f		      .byte.b	off
+    435  1a98		       7f		      .byte.b	off
+    436  1a99		       7f		      .byte.b	off
+    437  1a9a		       6f		      .byte.b	loopback10
+    438  1a9b
+    439  1a9b		       0c		      .byte.b	arpc
+    440  1a9c		       0c		      .byte.b	arpc
+    441  1a9d		       0c		      .byte.b	arpc
+    442  1a9e		       0c		      .byte.b	arpc
+    443  1a9f		       00		      .byte.b	note
+    444  1aa0		       00		      .byte.b	note
+    445  1aa1		       00		      .byte.b	note
+    446  1aa2		       00		      .byte.b	note
+    447  1aa3		       00		      .byte.b	note
+    448  1aa4		       7f		      .byte.b	off
+    449  1aa5		       7f		      .byte.b	off
+    450  1aa6		       00		      .byte.b	note
+    451  1aa7		       00		      .byte.b	note
+    452  1aa8		       00		      .byte.b	note
+    453  1aa9		       00		      .byte.b	note
+    454  1aaa		       00		      .byte.b	note
+    455  1aab		       6f		      .byte.b	loopback10
+    456  1aac
+------- FILE driver.asm
+------- FILE player.asm
+    254  1aac
+    255  1aac				   end

@@ -1,0 +1,932 @@
+------- FILE septataurus.asm LEVEL 1 PASS 3
+     1	1a0d				processor	6502
+     2	????
+     3	1000				org	$1000
+     4	1000
+     5	1000						; 10 SYS (4112)
+     6	1000	00 0e 08 0a*		BYTE.b	$00, $0E, $08, $0A, $00, $9E, $20, $28
+     7	1008	34 31 31 32*		BYTE.b	$34, $31, $31, $32, $29, $00, $00, $00
+     8	1010
+     9	1010						; casette buffer used throughout
+    10	1010						; $033c - $03fb
+    11	1010
+    12	1010
+    13	1010						;	PROGRAM INIT
+    14	1010						;	------------
+    15	1010
+    16	1010	a9 00			lda	#$00
+    17	1012						; zero out borderCheck
+    18	1012	8d 3d 03		sta	$033d
+    19	1015						; zero out doRasterPattern
+    20	1015	8d 3e 03		sta	$033e
+    21	1018	8d 3f 03		sta	$033f
+    22	101b
+    23	101b						; zero out song position
+    24	101b	a2 00			ldx	#$00
+    25	101d	a9 00			lda	#$00
+    26	101f		    initSongPositionRAM
+    27	101f	9d a0 03		sta	$03a0,x
+    28	1022	e8			inx
+    29	1023	e0 50			cpx	#$50
+    30	1025	d0 f8			bne	initSongPositionRAM
+    31	1027
+    32	1027						; set song speed
+    33	1027	a9 02			lda	#2
+    34	1029	8d 9e 03		sta	$039e
+    35	102c						; zero out song speed counter
+    36	102c	a9 00			lda	#0
+    37	102e	8d 9f 03		sta	$039f
+    38	1031
+    39	1031						; inverse character set
+    40	1031	a9 f1			lda	#%11110001
+    41	1033	8d 05 90		sta	$9005
+    42	1036
+    43	1036						; fill screen with black
+    44	1036	a9 00			lda	#0
+    45	1038	8d 00 96		sta	$9600	; color RAM
+    46	103b	8d 00 97		sta	$9700	; color RAM
+    47	103e	a9 66			lda	#102
+    48	1040	8d 00 1e		sta	$1e00	; screen RAM
+    49	1043	8d 00 1f		sta	$1f00	; screen RAM
+    50	1046	a2 00			ldx	#0
+    51	1048		    loopScreenBlacking
+    52	1048	e8			inx
+    53	1049	a9 00			lda	#0
+    54	104b	9d 00 96		sta	$9600,x	; color RAM
+    55	104e	9d 00 97		sta	$9700,x	; color RAM
+    56	1051	a9 66			lda	#102
+    57	1053	9d 00 1e		sta	$1e00,x	; screen RAM
+    58	1056	9d 00 1f		sta	$1f00,x	; screen RAM
+    59	1059	e0 ff			cpx	#$ff
+    60	105b	d0 eb			bne	loopScreenBlacking
+    61	105d
+    62	105d
+    63	105d
+    64	105d						; disable IRQ and NMI
+    65	105d	a9 7f			lda	#$7f
+    66	105f	8d 2e 91		sta	$912e
+    67	1062	8d 2d 91		sta	$912d
+    68	1065	8d 1e 91		sta	$911e
+    69	1068
+    70	1068
+    71	1068	a2 00			ldx	#0
+    72	106a	a0 87			ldy	#135
+    73	106c		    doArtist
+    74	106c	bd 01 1a		lda	artist,x
+    75	106f	c9 00			cmp	#0
+    76	1071	f0 08			beq	doArtistEnd
+    77	1073	99 00 1e		sta	$1e00,y
+    78	1076	e8			inx
+    79	1077	c8			iny
+    80	1078	4c 6c 10		jmp	doArtist
+    81	107b		    doArtistEnd
+    82	107b
+    83	107b	a2 00			ldx	#0
+    84	107d	a0 df			ldy	#223
+    85	107f		    doSongTitle
+    86	107f	bd 00 00		lda	songTitle,x
+    87	1082	c9 00			cmp	#0
+    88	1084	f0 08			beq	doSongTitleEnd
+    89	1086	99 00 1e		sta	$1e00,y
+    90	1089	e8			inx
+    91	108a	c8			iny
+    92	108b	4c 7f 10		jmp	doSongTitle
+    93	108e		    doSongTitleEnd
+    94	108e
+    95	108e
+    96	108e
+    97	108e
+    98	108e						;	-------------------------------------
+    99	108e						;	MAIN LOOP
+   100	108e						;	-------------------------------------
+   101	108e
+   102	108e		    MAIN_LOOP
+   103	108e						; press any key to exit
+   104	108e						;	jsr	$73
+   105	108e						; part of IRQ which is disabled
+   106	108e						;	lda	$CB
+   107	108e						;	cmp	#$40
+   108	108e						;	bne	exit
+   109	108e						;	jsr	doRasterPattern
+   110	108e
+   111	108e	20 86 11		jsr	GO_MUSIC_LOOP
+   112	1091
+   113	1091						;	jsr	GO_METERS
+   114	1091
+   115	1091	20 97 10		jsr	DO_RASTER_EFFECT
+   116	1094
+   117	1094	4c 8e 10		jmp	MAIN_LOOP
+   118	1097
+   119	1097
+   120	1097
+   121	1097
+   122	1097						;	-------------------------------------
+   123	1097						;	RASTER PATTERN LOOP
+   124	1097						;	-------------------------------------
+   125	1097
+   126	1097		    DO_RASTER_EFFECT
+   127	1097						; X = rasterPattern offset
+   128	1097						; Y = raster beam position
+   129	1097						; $033f = pattern offset frame position
+   130	1097						; $033e = pattern offset drawing position
+   131	1097	ee 3f 03		inc	$033f
+   132	109a	ee 3f 03		inc	$033f
+   133	109d	ae 3f 03		ldx	$033f
+   134	10a0	8e 3e 03		stx	$033e
+   135	10a3	bd e2 10		lda	RASTER_PATTERN,x
+   136	10a6	c9 00			cmp	#0
+   137	10a8	d0 03			bne	waitRasterHome
+   138	10aa	8d 3f 03		sta	$033f
+   139	10ad		    waitRasterHome
+   140	10ad	ad 03 90		lda	$9003	; bit 7 holds 9th bit of raster position
+   141	10b0	29 80			and	#128
+   142	10b2	c9 80			cmp	#128
+   143	10b4	f0 f7			beq	waitRasterHome
+   144	10b6	a9 18			lda	#$18	; wait for Xth row of rasterbeam
+   145	10b8		    waitRasterPassTopBorder
+   146	10b8	cd 04 90		cmp	$9004	; rasterbeam address
+   147	10bb	d0 fb			bne	waitRasterPassTopBorder
+   148	10bd	a8			tay		; store raster position in Y
+   149	10be
+   150	10be		    loopRasterPattern
+   151	10be	ae 3e 03		ldx	$033e
+   152	10c1	bd e2 10		lda	RASTER_PATTERN,x
+   153	10c4	c9 00			cmp	#0
+   154	10c6	d0 06			bne	skipRasterPatternReset
+   155	10c8	8d 3e 03		sta	$033e	; A should be 0, reset record
+   156	10cb	ad e2 10		lda	RASTER_PATTERN
+   157	10ce		    skipRasterPatternReset
+   158	10ce	c0 81			cpy	#$81	; stop RASTERing at this scanline
+   159	10d0	d0 01			bne	skipRasterEnd
+   160	10d2	60			rts
+   161	10d3		    skipRasterEnd
+   162	10d3	ee 3e 03		inc	$033e
+   163	10d6	c8			iny
+   164	10d7		    waitRasterNextLine
+   165	10d7	cc 04 90		cpy	$9004
+   166	10da	d0 fb			bne	waitRasterNextLine
+   167	10dc	8d 0f 90		sta	$900f	; border + bg setting
+   168	10df	4c be 10		jmp	loopRasterPattern
+   169	10e2
+   170	10e2		    RASTER_PATTERN
+   171	10e2	88 88 88 28*		byte.b	136, 136, 136, 40, 40, 136, 152, 152, 136, 152, 152, 152, 152, 120
+   172	10f0	78 98 98 98*		byte.b	120, 152, 152, 152, 152, 136, 152, 152, 136, 40, 40, 136, 136, 136
+   173	10fe	00			byte.b	0
+   174	10ff
+   175	10ff
+   176	10ff
+   177	10ff						;	-------------------------------------
+   178	10ff						;	DRAW THEM METERS
+   179	10ff						;	-------------------------------------
+   180	10ff
+   181	10ff
+   182	10ff
+   183	10ff		    GO_METERS
+   184	10ff	ad 9f 03		lda	$039f	; songspeed counter
+   185	1102	c9 00			cmp	#0
+   186	1104	f0 10			beq	DRAW_METERS
+   187	1106	ad 9e 03		lda	$039e	; songspeed
+   188	1109	6a			ror
+   189	110a	cd 9f 03		cmp	$039f
+   190	110d	f0 04			beq	DO_METERS_2	; alt meters halfway through
+   191	110f	60			rts
+   192	1110		    DO_METERS_1
+   193	1110	4c 16 11		jmp	DRAW_METERS
+   194	1113		    DO_METERS_2
+   195	1113	4c 16 11		jmp	DRAW_METERS
+   196	1116
+   197	1116		    DRAW_METERS
+   198	1116
+   199	1116	a2 00			ldx	#0	; clear meter space
+   200	1118	a9 20			lda	#$20
+   201	111a		    clearMeterSpace
+   202	111a	9d 00 1f		sta	$1f00,x
+   203	111d	e8			inx
+   204	111e	e0 ff			cpx	#$ff
+   205	1120	d0 f8			bne	clearMeterSpace
+   206	1122
+   207	1122	a9 0a			lda	#$0a
+   208	1124	85 48			sta	$48	; which voice
+   209	1126	a9 09			lda	#9
+   210	1128	85 49			sta	$49	; colum offset
+   211	112a		    METER_DRAW_COLUM
+   212	112a	a6 48			ldx	$48
+   213	112c	bd 00 90		lda	$9000,x
+   214	112f	29 80			and	#128
+   215	1131	c9 80			cmp	#128
+   216	1133	d0 27			bne	METER_END_DRAW_COLUM
+   217	1135	ad 0e 90		lda	$900e
+   218	1138	6a			ror		; meter height is half of volume
+   219	1139	6a			ror
+   220	113a	6a			ror
+   221	113b	6a			ror
+   222	113c	a8			tay		; countdown with Y
+   223	113d
+   224	113d	a6 49			ldx	$49	; load colum offset into X
+   225	113f		    METER_DRAW_COLUM_ROW
+   226	113f	a9 66			lda	#102
+   227	1141	9d 00 1f		sta	$1f00,x
+   228	1144	e8			inx
+   229	1145	9d 00 1f		sta	$1f00,x
+   230	1148	e8			inx
+   231	1149	9d 00 1f		sta	$1f00,x
+   232	114c	e8			inx
+   233	114d	9d 00 1f		sta	$1f00,x
+   234	1150	88			dey
+   235	1151	c0 00			cpy	#0
+   236	1153	f0 07			beq	METER_END_DRAW_COLUM
+   237	1155	8a			txa
+   238	1156	69 12			adc	#18
+   239	1158	aa			tax
+   240	1159	4c 3f 11		jmp	METER_DRAW_COLUM_ROW
+   241	115c		    METER_END_DRAW_COLUM
+   242	115c	e6 48			inc	$48
+   243	115e	a5 48			lda	$48
+   244	1160	c9 0b			cmp	#$0b
+   245	1162	f0 09			beq	END_METER_DRAW
+   246	1164	a5 49			lda	$49
+   247	1166	69 07			adc	#7
+   248	1168	86 49			stx	$49
+   249	116a	4c 2a 11		jmp	METER_DRAW_COLUM
+   250	116d		    END_METER_DRAW
+   251	116d	60			rts
+   252	116e
+   253	116e		    noMETER
+   254	116e	e6 48			inc	$48
+   255	1170	a5 49			lda	$49
+   256	1172	69 05			adc	#5
+   257	1174	85 49			sta	$49
+   258	1176
+   259	1176		    endMETER
+   260	1176	e8			inx
+   261	1177	e0 14			cpx	#20
+   262	1179	90 c4			bcc	METER_DRAW_COLUM_ROW
+   263	117b	8a			txa
+   264	117c	69 16			adc	#22
+   265	117e	e6 48			inc	$48
+   266	1180	88			dey
+   267	1181	c0 00			cpy	#0
+   268	1183	d0 a5			bne	METER_DRAW_COLUM
+   269	1185	60			rts
+   270	1186
+   271	1186
+   272	1186						;	-------------------------------------
+   273	1186						;	MUSIC LOOP
+   274	1186						;	-------------------------------------
+   275	1186
+   276	1186		    GO_MUSIC_LOOP
+   277	1186
+   278	1186						; EFFECTS GOGOGOGOOO
+   279	1186						; check for enabled effects
+   280	1186						; do stuff to channels
+   281	1186
+   282	1186						; SPEED COUNTER CHECK
+   283	1186						; counts frames based on speed setting
+   284	1186						; before moving to next pattern row
+   285	1186	ad 9e 03		lda	$039e
+   286	1189	cd 9f 03		cmp	$039f
+   287	118c	f0 04			beq	skipSpeedCounterCheck
+   288	118e	ee 9f 03		inc	$039f
+   289	1191	60			rts
+   290	1192
+   291	1192		    skipSpeedCounterCheck
+   292	1192	a9 00			lda	#0
+   293	1194	8d 9f 03		sta	$039f	; reset speed counter
+   294	1197
+   295	1197
+   296	1197						; PATTERN CYCLE
+   297	1197
+   298	1197	20 c6 11		jsr	SET_PATTERN_BASS
+   299	119a	20 6a 12		jsr	DO_NEXT_MACRO
+   300	119d	20 ef 11		jsr	SET_PATTERN_ALTO
+   301	11a0	20 6a 12		jsr	DO_NEXT_MACRO
+   302	11a3	20 18 12		jsr	SET_PATTERN_SOPRANO
+   303	11a6	20 6a 12		jsr	DO_NEXT_MACRO
+   304	11a9	20 41 12		jsr	SET_PATTERN_NOISE
+   305	11ac	20 6a 12		jsr	DO_NEXT_MACRO
+   306	11af
+   307	11af						; get channel data 5th byte
+   308	11af						;	ldx $03f1
+   309	11af						;	lda $0305,x
+   310	11af
+   311	11af
+   312	11af
+   313	11af						; VOLUME
+   314	11af	ae e0 03		ldx	$03e0
+   315	11b2	bd 8d 14		lda	CHANNEL_VOLUME,x
+   316	11b5	c9 ff			cmp	#255
+   317	11b7	d0 05			bne	skipVolEnd
+   318	11b9	a2 00			ldx	#0
+   319	11bb	ad 8d 14		lda	CHANNEL_VOLUME
+   320	11be		    skipVolEnd
+   321	11be	8d 0e 90		sta	$900e
+   322	11c1	e8			inx
+   323	11c2	8e e0 03		stx	$03e0
+   324	11c5
+   325	11c5
+   326	11c5						; GO HOME
+   327	11c5	60			rts
+   328	11c6
+   329	11c6
+   330	11c6		    SET_PATTERN_BASS
+   331	11c6	a9 0a			lda	#$0a
+   332	11c8	8d f0 03		sta	$03f0
+   333	11cb	a9 a0			lda	#$a0
+   334	11cd	8d f1 03		sta	$03f1
+   335	11d0	ae a2 03		ldx	$03a2
+   336	11d3	bd a1 12		lda	CHANNEL_BASS,x
+   337	11d6	e8			inx
+   338	11d7	bc a1 12		ldy	CHANNEL_BASS,x
+   339	11da	c9 ff			cmp	#255
+   340	11dc	d0 0c			bne	notBassEndSong
+   341	11de	c0 ff			cpy	#255
+   342	11e0	d0 08			bne	notBassEndSong
+   343	11e2	a9 00			lda	#0
+   344	11e4	8d a2 03		sta	$03a2
+   345	11e7	4c c6 11		jmp	SET_PATTERN_BASS
+   346	11ea		    notBassEndSong
+   347	11ea	85 40			sta	$40	; set current pattern
+   348	11ec	84 41			sty	$41
+   349	11ee	60			rts
+   350	11ef
+   351	11ef
+   352	11ef		    SET_PATTERN_ALTO
+   353	11ef	a9 0b			lda	#$0b
+   354	11f1	8d f0 03		sta	$03f0
+   355	11f4	a9 b0			lda	#$b0
+   356	11f6	8d f1 03		sta	$03f1
+   357	11f9	ae b2 03		ldx	$03b2
+   358	11fc	bd 21 13		lda	CHANNEL_ALTO,x
+   359	11ff	e8			inx
+   360	1200	bc 21 13		ldy	CHANNEL_ALTO,x
+   361	1203	c9 ff			cmp	#255
+   362	1205	d0 0c			bne	notAltoEndSong
+   363	1207	c0 ff			cpy	#255
+   364	1209	d0 08			bne	notAltoEndSong
+   365	120b	a9 00			lda	#0
+   366	120d	8d b2 03		sta	$03b2
+   367	1210	4c ef 11		jmp	SET_PATTERN_ALTO
+   368	1213		    notAltoEndSong
+   369	1213	85 40			sta	$40	; set current pattern
+   370	1215	84 41			sty	$41
+   371	1217	60			rts
+   372	1218
+   373	1218
+   374	1218		    SET_PATTERN_SOPRANO
+   375	1218	a9 0c			lda	#$0c
+   376	121a	8d f0 03		sta	$03f0
+   377	121d	a9 c0			lda	#$c0
+   378	121f	8d f1 03		sta	$03f1
+   379	1222	ae c2 03		ldx	$03c2
+   380	1225	bd 9b 13		lda	CHANNEL_SOPRANO,x
+   381	1228	e8			inx
+   382	1229	bc 9b 13		ldy	CHANNEL_SOPRANO,x
+   383	122c	c9 ff			cmp	#255
+   384	122e	d0 0c			bne	notSopranoEndSong
+   385	1230	c0 ff			cpy	#255
+   386	1232	d0 08			bne	notSopranoEndSong
+   387	1234	a9 00			lda	#0
+   388	1236	8d c2 03		sta	$03c2
+   389	1239	4c 18 12		jmp	SET_PATTERN_SOPRANO
+   390	123c		    notSopranoEndSong
+   391	123c	85 40			sta	$40	; set current pattern
+   392	123e	84 41			sty	$41
+   393	1240	60			rts
+   394	1241
+   395	1241
+   396	1241
+   397	1241		    SET_PATTERN_NOISE
+   398	1241	a9 0d			lda	#$0d
+   399	1243	8d f0 03		sta	$03f0
+   400	1246	a9 d0			lda	#$d0
+   401	1248	8d f1 03		sta	$03f1
+   402	124b	ae d2 03		ldx	$03d2
+   403	124e	bd 0d 14		lda	CHANNEL_NOISE,x
+   404	1251	e8			inx
+   405	1252	bc 0d 14		ldy	CHANNEL_NOISE,x
+   406	1255	c9 ff			cmp	#255
+   407	1257	d0 0c			bne	notNoiseEndSong
+   408	1259	c0 ff			cpy	#255
+   409	125b	d0 08			bne	notNoiseEndSong
+   410	125d	a9 00			lda	#0
+   411	125f	8d d2 03		sta	$03d2
+   412	1262	4c 41 12		jmp	SET_PATTERN_NOISE
+   413	1265		    notNoiseEndSong
+   414	1265	85 40			sta	$40	; set current pattern
+   415	1267	84 41			sty	$41
+   416	1269	60			rts
+   417	126a
+   418	126a		    DO_NEXT_MACRO
+   419	126a	ae f1 03		ldx	$03f1	; 1 byte riffmacro buffer at $03x3
+   420	126d	bd 03 03		lda	$0303,x
+   421	1270	ae f0 03		ldx	$03f0
+   422	1273	9d 00 90		sta	$9000,x	; play buffer value
+   423	1276
+   424	1276	ae f1 03		ldx	$03f1	; riffmacro position
+   425	1279	bd 00 03		lda	$0300,x
+   426	127c	a8			tay
+   427	127d	b1 40			lda	($40),y
+   428	127f	c9 00			cmp	#0	; if riffmacro val != 0 skip reset
+   429	1281	d0 12			bne	riffmacroNotEnd
+   430	1283	a9 00			lda	#0
+   431	1285	9d 00 03		sta	$0300,x	; reset riffmacro position
+   432	1288	bd 02 03		lda	$0302,x	; load song position
+   433	128b	a8			tay
+   434	128c	c8			iny		; increase song position by a word
+   435	128d	c8			iny
+   436	128e	98			tya
+   437	128f	9d 02 03		sta	$0302,x	; save song position
+   438	1292	4c 6a 12		jmp	DO_NEXT_MACRO
+   439	1295		    riffmacroNotEnd
+   440	1295	9d 03 03		sta	$0303,x	; set buffer value for next frame
+   441	1298	c8			iny		; increase riffmacro position
+   442	1299	98			tya
+   443	129a	ae f1 03		ldx	$03f1
+   444	129d	9d 00 03		sta	$0300,x	; save riffmacro position
+   445	12a0	60			rts
+   446	12a1
+   447	12a1
+   448	12a1						;	---------
+   449	12a1						;	DATA HOLD
+   450	12a1						;	---------
+   451	12a1
+   452	12a1		    CHANNEL_BASS
+   453	12a1	21 16			word.w	measureMute
+   454	12a3	21 16			word.w	measureMute
+   455	12a5	21 16			word.w	measureMute
+   456	12a7	21 16			word.w	measureMute
+   457	12a9	21 16			word.w	measureMute
+   458	12ab	21 16			word.w	measureMute
+   459	12ad	21 16			word.w	measureMute
+   460	12af	21 16			word.w	measureMute
+   461	12b1	21 16			word.w	measureMute
+   462	12b3	21 16			word.w	measureMute
+   463	12b5	21 16			word.w	measureMute
+   464	12b7	21 16			word.w	measureMute
+   465	12b9	c4 16			word.w	dnb
+   466	12bb	21 16			word.w	measureMute
+   467	12bd	27 17			word.w	openHoles
+   468	12bf	27 17			word.w	openHoles
+   469	12c1	06 17			word.w	dnBass	; start break jam
+   470	12c3	06 17			word.w	dnBass
+   471	12c5	06 17			word.w	dnBass
+   472	12c7	06 17			word.w	dnBass
+   473	12c9	06 17			word.w	dnBass
+   474	12cb	06 17			word.w	dnBass
+   475	12cd	06 17			word.w	dnBass
+   476	12cf	06 17			word.w	dnBass
+   477	12d1	06 17			word.w	dnBass
+   478	12d3	06 17			word.w	dnBass
+   479	12d5	06 17			word.w	dnBass
+   480	12d7	06 17			word.w	dnBass
+   481	12d9	06 17			word.w	dnBass	; 13
+   482	12db	06 17			word.w	dnBass
+   483	12dd	06 17			word.w	dnBass
+   484	12df	e5 16			word.w	dnb2
+   485	12e1
+   486	12e1	98 14			word.w	transBass	; start of trans
+   487	12e3
+   488	12e3	7f 19			word.w	extraKik	; start of half time
+   489	12e5	7f 19			word.w	extraKik
+   490	12e7	7f 19			word.w	extraKik
+   491	12e9	7f 19			word.w	extraKik
+   492	12eb	7f 19			word.w	extraKik	; start of accompy
+   493	12ed	7f 19			word.w	extraKik
+   494	12ef	7f 19			word.w	extraKik
+   495	12f1	7f 19			word.w	extraKik
+   496	12f3	7f 19			word.w	extraKik
+   497	12f5	7f 19			word.w	extraKik
+   498	12f7	7f 19			word.w	extraKik
+   499	12f9	7f 19			word.w	extraKik
+   500	12fb
+   501	12fb	06 17			word.w	dnBass	; 13 back to
+   502	12fd	06 17			word.w	dnBass
+   503	12ff	06 17			word.w	dnBass
+   504	1301	e5 16			word.w	dnb2
+   505	1303	48 17			word.w	openArps
+   506	1305	21 16			word.w	measureMute
+   507	1307	21 16			word.w	measureMute
+   508	1309	21 16			word.w	measureMute
+   509	130b	21 16			word.w	measureMute
+   510	130d	48 17			word.w	openArps
+   511	130f	69 17			word.w	halfArps
+   512	1311	21 16			word.w	measureMute
+   513	1313	21 16			word.w	measureMute
+   514	1315	21 16			word.w	measureMute
+   515	1317	21 16			word.w	measureMute
+   516	1319	21 16			word.w	measureMute
+   517	131b	21 16			word.w	measureMute
+   518	131d	21 16			word.w	measureMute
+   519	131f	ff ff			byte.b	255, 255
+   520	1321
+   521	1321		    CHANNEL_ALTO
+   522	1321	21 16			word.w	measureMute
+   523	1323	21 16			word.w	measureMute
+   524	1325	21 16			word.w	measureMute
+   525	1327	21 16			word.w	measureMute
+   526	1329	06 17			word.w	dnBass
+   527	132b	06 17			word.w	dnBass
+   528	132d	06 17			word.w	dnBass
+   529	132f	27 17			word.w	openHoles
+   530	1331	06 17			word.w	dnBass
+   531	1333	06 17			word.w	dnBass
+   532	1335	06 17			word.w	dnBass
+   533	1337	e5 16			word.w	dnb2
+   534	1339	06 17			word.w	dnBass
+   535	133b	06 17			word.w	dnBass
+   536	133d	e5 16			word.w	dnb2
+   537	133f	27 17			word.w	openHoles
+   538	1341	06 17			word.w	dnBass	; start break jam
+   539	1343	21 16			word.w	measureMute
+   540	1345	06 17			word.w	dnBass
+   541	1347	21 16			word.w	measureMute
+   542	1349	42 16			word.w	tinkytak
+   543	134b	06 17			word.w	dnBass
+   544	134d	06 17			word.w	dnBass
+   545	134f	06 17			word.w	dnBass
+   546	1351	06 17			word.w	dnBass
+   547	1353	83 16			word.w	tinkytik
+   548	1355	06 17			word.w	dnBass	; 13
+   549	1357	06 17			word.w	dnBass
+   550	1359	21 16			word.w	measureMute
+   551	135b	06 17			word.w	dnBass
+   552	135d
+   553	135d	19 15			word.w	transHarm	; start of trans
+   554	135f
+   555	135f	bb 17			word.w	bassline2	; start of half time
+   556	1361	bb 17			word.w	bassline2
+   557	1363	bb 17			word.w	bassline2
+   558	1365	7a 17			word.w	bassline
+   559	1367	bb 17			word.w	bassline2	; start of accompy
+   560	1369	bb 17			word.w	bassline2
+   561	136b	bb 17			word.w	bassline2
+   562	136d	bb 17			word.w	bassline2
+   563	136f	fc 17			word.w	bassline2accompy2
+   564	1371	bb 17			word.w	bassline2
+   565	1373	bb 17			word.w	bassline2
+   566	1375
+   567	1375
+   568	1375	06 17			word.w	dnBass	; 13 back too
+   569	1377	06 17			word.w	dnBass
+   570	1379	21 16			word.w	measureMute
+   571	137b	06 17			word.w	dnBass
+   572	137d	21 16			word.w	measureMute
+   573	137f	48 17			word.w	openArps
+   574	1381	21 16			word.w	measureMute
+   575	1383	21 16			word.w	measureMute
+   576	1385	21 16			word.w	measureMute
+   577	1387	48 17			word.w	openArps
+   578	1389	69 17			word.w	halfArps
+   579	138b	00 00			word.w	qmeasureMute
+   580	138d	21 16			word.w	measureMute
+   581	138f	21 16			word.w	measureMute
+   582	1391	21 16			word.w	measureMute
+   583	1393	21 16			word.w	measureMute
+   584	1395	21 16			word.w	measureMute
+   585	1397	21 16			word.w	measureMute
+   586	1399
+   587	1399	ff ff			byte.b	255, 255
+   588	139b
+   589	139b		    CHANNEL_SOPRANO
+   590	139b	21 16			word.w	measureMute
+   591	139d	21 16			word.w	measureMute
+   592	139f	21 16			word.w	measureMute
+   593	13a1	21 16			word.w	measureMute
+   594	13a3	21 16			word.w	measureMute
+   595	13a5	21 16			word.w	measureMute
+   596	13a7	21 16			word.w	measureMute
+   597	13a9	21 16			word.w	measureMute
+   598	13ab	21 16			word.w	measureMute
+   599	13ad	21 16			word.w	measureMute
+   600	13af	21 16			word.w	measureMute
+   601	13b1	21 16			word.w	measureMute
+   602	13b3	c4 16			word.w	dnb
+   603	13b5	27 17			word.w	openHoles
+   604	13b7	27 17			word.w	openHoles
+   605	13b9	48 17			word.w	openArps
+   606	13bb	21 16			word.w	measureMute	; start break jam
+   607	13bd	21 16			word.w	measureMute
+   608	13bf	21 16			word.w	measureMute
+   609	13c1	21 16			word.w	measureMute
+   610	13c3	21 16			word.w	measureMute
+   611	13c5	21 16			word.w	measureMute
+   612	13c7	42 16			word.w	tinkytak	; double lengthed
+   613	13c9	83 16			word.w	tinkytik
+   614	13cb	83 16			word.w	tinkytik
+   615	13cd	06 17			word.w	dnBass	; 13
+   616	13cf	21 16			word.w	measureMute
+   617	13d1	21 16			word.w	measureMute
+   618	13d3	06 17			word.w	dnBass
+   619	13d5
+   620	13d5	21 16			word.w	measureMute	; start trans
+   621	13d7	21 16			word.w	measureMute
+   622	13d9	21 16			word.w	measureMute
+   623	13db	21 16			word.w	measureMute
+   624	13dd
+   625	13dd	7a 17			word.w	bassline	; start of half time
+   626	13df	bb 17			word.w	bassline2
+   627	13e1	bb 17			word.w	bassline2
+   628	13e3	7a 17			word.w	bassline
+   629	13e5	7d 18			word.w	accompy1	; start of accompy
+   630	13e7	7d 18			word.w	accompy1
+   631	13e9	fe 18			word.w	accompy2
+   632	13eb	7d 18			word.w	accompy1
+   633	13ed
+   634	13ed	06 17			word.w	dnBass	; 13 back too
+   635	13ef	21 16			word.w	measureMute
+   636	13f1	21 16			word.w	measureMute
+   637	13f3	06 17			word.w	dnBass
+   638	13f5	21 16			word.w	measureMute
+   639	13f7	21 16			word.w	measureMute
+   640	13f9	48 17			word.w	openArps
+   641	13fb	21 16			word.w	measureMute
+   642	13fd	21 16			word.w	measureMute
+   643	13ff	48 17			word.w	openArps
+   644	1401	21 16			word.w	measureMute
+   645	1403	21 16			word.w	measureMute
+   646	1405	21 16			word.w	measureMute
+   647	1407	21 16			word.w	measureMute
+   648	1409	21 16			word.w	measureMute
+   649	140b	ff ff			byte.b	255, 255
+   650	140d
+   651	140d		    CHANNEL_NOISE
+   652	140d	c4 16			word.w	dnb
+   653	140f	c4 16			word.w	dnb
+   654	1411	c4 16			word.w	dnb
+   655	1413	e5 16			word.w	dnb2
+   656	1415	c4 16			word.w	dnb
+   657	1417	c4 16			word.w	dnb
+   658	1419	e5 16			word.w	dnb2
+   659	141b	27 17			word.w	openHoles
+   660	141d	c4 16			word.w	dnb
+   661	141f	c4 16			word.w	dnb
+   662	1421	c4 16			word.w	dnb
+   663	1423	e5 16			word.w	dnb2
+   664	1425	c4 16			word.w	dnb
+   665	1427	c4 16			word.w	dnb
+   666	1429	e5 16			word.w	dnb2
+   667	142b	27 17			word.w	openHoles
+   668	142d	c4 16			word.w	dnb	; start break jam
+   669	142f	c4 16			word.w	dnb
+   670	1431	c4 16			word.w	dnb
+   671	1433	c4 16			word.w	dnb
+   672	1435	c4 16			word.w	dnb
+   673	1437	c4 16			word.w	dnb
+   674	1439	c4 16			word.w	dnb
+   675	143b	c4 16			word.w	dnb
+   676	143d	e5 16			word.w	dnb2
+   677	143f	c4 16			word.w	dnb
+   678	1441	c4 16			word.w	dnb
+   679	1443	e5 16			word.w	dnb2
+   680	1445	06 17			word.w	dnBass	; 13
+   681	1447	c4 16			word.w	dnb
+   682	1449	c4 16			word.w	dnb
+   683	144b	c4 16			word.w	dnb
+   684	144d
+   685	144d	9a 15			word.w	kikStop	; start of trans
+   686	144f	bb 15			word.w	transdnb
+   687	1451	9a 15			word.w	kikStop
+   688	1453
+   689	1453	c0 19			word.w	extraKikSnar	; start of half time
+   690	1455	c0 19			word.w	extraKikSnar
+   691	1457	c0 19			word.w	extraKikSnar
+   692	1459	c0 19			word.w	extraKikSnar
+   693	145b	c0 19			word.w	extraKikSnar	; start of accompy
+   694	145d	c0 19			word.w	extraKikSnar
+   695	145f	c0 19			word.w	extraKikSnar
+   696	1461	c0 19			word.w	extraKikSnar
+   697	1463	c0 19			word.w	extraKikSnar
+   698	1465	c0 19			word.w	extraKikSnar
+   699	1467	c0 19			word.w	extraKikSnar
+   700	1469	c0 19			word.w	extraKikSnar
+   701	146b
+   702	146b	06 17			word.w	dnBass	; 13  back to
+   703	146d	c4 16			word.w	dnb
+   704	146f	c4 16			word.w	dnb
+   705	1471	c4 16			word.w	dnb
+   706	1473	00 00			word.w	kikstop
+   707	1475	21 16			word.w	measureMute
+   708	1477	00 00			word.w	kikstop
+   709	1479	48 17			word.w	openArps
+   710	147b	69 17			word.w	halfArps
+   711	147d	00 00			word.w	kikstop
+   712	147f	21 16			word.w	measureMute
+   713	1481	21 16			word.w	measureMute
+   714	1483	21 16			word.w	measureMute
+   715	1485	21 16			word.w	measureMute
+   716	1487	21 16			word.w	measureMute
+   717	1489	21 16			word.w	measureMute
+   718	148b	ff ff			byte.b	255,255
+   719	148d
+   720	148d		    CHANNEL_VOLUME
+   721	148d	0f 08 0a 08*		byte.b	15, 8, 10, 8, 13, 8, 10, 8, 255
+   722	1496
+   723	1496						;	--------------------------
+   724	1496						;	PATTERNS
+   725	1496						;	--------------------------
+   726	1496						;	not in use yet
+   727	1496						;	currently runs  SONG ORDER -> RIFF/MACROs
+   728	1496						;	instead of desired	SONG ORDER -> PATTERNS -> RIFF/MACROs
+   729	1496
+   730	1496		    pattern00
+   731	1496						;	word	bassline, bassline, bassline, bassline2
+   732	1496	0b 1a			word.w	endPattern
+   733	1498
+   734	1498						;	--------------------------
+   735	1498						;	RIFFS AND MACROS
+   736	1498						;	--------------------------
+   737	1498
+   738	1498		    transBass
+   739	1498	dc dc dc 7f*		byte.b	220,220,220,127,127,127,227,227,227,127,127,127,232,232,232,127
+   740	14a8	7f 7f ed ed*		byte.b	127,127,237,237,237,127,127,127,220,218,216,214,214,127,214,127
+   741	14b8	dc dc dc 7f*		byte.b	220,220,220,127,127,127,227,227,227,127,127,127,232,232,232,127
+   742	14c8	7f 7f ed ed*		byte.b	127,127,237,237,237,127,127,127,214,127,214,127,214,127,214,127
+   743	14d8	dc dc dc dc*		byte.b	220,220,220,220,127,127,227,227,227,200,127,127,232,232,232,232
+   744	14e8	7f 7f ed ed*		byte.b	127,127,237,237,237,237,127,127,214,127,214,127,214,127,214,127
+   745	14f8	dc dc dc dc*		byte.b	220,220,220,220,220,127,227,227,227,200,200,127,232,232,232,232
+   746	1508	e8 e8 ed ed*		byte.b	232,232,237,237,237,237,237,237,214,214,173,175,179,185,192,198
+   747	1518	00			byte.b	0
+   748	1519		    transHarm
+   749	1519	e0 7f 7f e0*		byte.b	224,127,127,224,127,127,232,127,127,232,127,127,237,127,127,237
+   750	1529	7f 7f f0 7f*		byte.b	127,127,240,127,127,240,192,127,192,127,127,127,192,127,192,127
+   751	1539	e0 7f 7f e0*		byte.b	224,127,127,224,127,127,232,127,127,232,127,127,237,127,127,237
+   752	1549	7f f0 f0 7f*		byte.b	127,240,240,127,240,240,192,127,192,127,127,127,192,127,192,127
+   753	1559	e0 e0 e0 e0*		byte.b	224,224,224,224,224,224,232,127,127,232,127,127,237,127,127,237
+   754	1569	7f 7f f0 7f*		byte.b	127,127,240,127,127,240,192,127,192,127,127,127,192,127,192,127
+   755	1579	e0 7f 7f e0*		byte.b	224,127,127,224,127,127,232,127,127,232,127,127,237,127,127,237
+   756	1589	7f 7f f0 7f*		byte.b	127,127,240,127,127,240,192,191,189,188,184,179,172,161,148,129
+   757	1599	00			byte.b	0
+   758	159a		    kikStop
+   759	159a	96 87 80 7f*		byte.b	150,135,128,127,127,127,127,127,127,127,127,127,127,127,127,127
+   760	15aa	7f 7f 7f 7f*		byte.b	127,127,127,127,127,127,127,127,127,127,127,127,250,127,250,127
+   761	15ba	00			byte.b	0
+   762	15bb		    transdnb
+   763	15bb	96 87 80 7f*		byte.b	150,135,128,127,250,127,127,127,250,127,127,127,250,127,127,127
+   764	15cb	f8 d2 ee 7f*		byte.b	248,210,238,127,250,127,127,127,250,127,127,127,250,127,127,127
+   765	15db	96 87 80 7f*		byte.b	150,135,128,127,250,127,127,127,250,127,127,127,250,127,127,127
+   766	15eb	f8 d2 ee 7f*		byte.b	248,210,238,127,250,127,127,127,250,127,127,127,250,127,127,127
+   767	15fb	00			byte.b	0
+   768	15fc		    whip
+   769	15fc	c3 c4 c5 c6*		byte.b	195, 196, 197, 198, 127, 127, 127, 127
+   770	1604	7f 7f 7f 7f*		byte.b	127, 127, 127, 127, 127, 127, 127, 127
+   771	160c	7f 7f			byte.b	127, 127
+   772	160e	00			byte.b	0
+   773	160f
+   774	160f		    doot
+   775	160f	f0 7f 7f 7f*		byte.b	240, 127, 127, 127, 127, 127
+   776	1615	00			byte.b	0
+   777	1616
+   778	1616		    mute
+   779	1616	7f			byte.b	127
+   780	1617	00			byte.b	0
+   781	1618
+   782	1618		    qMeasureMute
+   783	1618	7f 7f 7f 7f*		byte.b	127,127,127,127,127,127,127,127
+   784	1620	00			byte.b	0
+   785	1621
+   786	1621		    measureMute
+   787	1621	7f 7f 7f 7f*		byte.b	127, 127, 127, 127, 127, 127, 127, 127
+   788	1629	7f 7f 7f 7f*		byte.b	127, 127, 127, 127, 127, 127, 127, 127
+   789	1631	7f 7f 7f 7f*		byte.b	127, 127, 127, 127, 127, 127, 127, 127
+   790	1639	7f 7f 7f 7f*		byte.b	127, 127, 127, 127, 127, 127, 127, 127
+   791	1641	00			byte.b	0
+   792	1642
+   793	1642		    tinkytak
+   794	1642	f0 ef 7f 7f*		byte.b	240,239,127,127,127,127,240,239
+   795	164a	7f 7f 7f ef*		byte.b	127,127,127,239,240,239,127,127
+   796	1652	7f 7f f0 ef*		byte.b	127,127,240,239,127,127,127,127
+   797	165a	f0 ef 7f 7f*		byte.b	240,239,127,127,127,239,240,239
+   798	1662	7f 7f 7f 7f*		byte.b	127,127,127,127,240,239,127,127
+   799	166a	7f 7f f0 ef*		byte.b	127,127,240,239,127,127,127,241
+   800	1672	f0 ef 7f ed*		byte.b	240,239,127,237,236,127,234,233
+   801	167a	7f e7 e6 7f*		byte.b	127,231,230,127,228,227,226,225
+   802	1682	00			byte.b	0
+   803	1683		    tinkytik
+   804	1683	c3 be bd be*		byte.b	195,190,189,190,191,190,127,127
+   805	168b	c3 be bd bf*		byte.b	195,190,189,191,193,196,201,127
+   806	1693	be be be 7f*		byte.b	190,190,190,127,127,225,127,127
+   807	169b	be be c0 7f*		byte.b	190,190,192,127,127,232,127,127
+   808	16a3	be bf c0 7f*		byte.b	190,191,192,127,127,232,127,225
+   809	16ab	be c0 c2 7f*		byte.b	190,192,194,127,127,127,190,195
+   810	16b3	cd 7f 7f 7f*		byte.b	205,127,127,127,190,127,190,127
+   811	16bb	be bd be bf*		byte.b	190,189,190,191,190,127,190,127
+   812	16c3	00			byte.b	0
+   813	16c4
+   814	16c4		    dnb
+   815	16c4	96 87 80 7f*		byte.b	150, 135, 128, 127, 255, 127, 250, 127
+   816	16cc	f8 d2 ee 7f*		byte.b	248, 210, 238, 127, 255, 127, 250, 127
+   817	16d4	fa 7f fa 7f*		byte.b	250, 127, 250, 127, 150, 135, 128, 127
+   818	16dc	f8 d2 ee b2*		byte.b	248, 210, 238, 178, 255, 127, 250, 127
+   819	16e4	00			byte.b	0
+   820	16e5		    dnb2
+   821	16e5	96 87 80 7f*		byte.b	150, 135, 128, 127, 255, 127, 250, 127
+   822	16ed	f8 d2 ee 7f*		byte.b	248, 210, 238, 127, 255, 127, 250, 127
+   823	16f5	fa 7f fa 7f*		byte.b	250, 127, 250, 127, 250, 127, 250, 127
+   824	16fd	ff 7f fa 7f*		byte.b	255, 127, 250, 127, 250, 127, 250, 127
+   825	1705	00			byte.b	0
+   826	1706
+   827	1706		    dnBass
+   828	1706	d7 d7 d7 7f*		byte.b	215, 215, 215, 127, 127, 127, 127, 127
+   829	170e	dd df e3 e3*		byte.b	221, 223, 227, 227, 127, 127, 127, 127
+   830	1716	7f 7f 7f 7f*		byte.b	127, 127, 127, 127, 215, 215, 215, 127
+   831	171e	dd df e3 e3*		byte.b	221, 223, 227, 227, 127, 127, 127, 127
+   832	1726	00			byte.b	0
+   833	1727
+   834	1727		    openHoles
+   835	1727	c3 c3 c3 7f*		byte.b	195, 195, 195, 127, 195, 195, 195, 127
+   836	172f	c9 c9 c9 c9*		byte.b	201, 201, 201, 201, 201, 201, 201, 127
+   837	1737	cf cf cf cf*		byte.b	207, 207, 207, 207, 207, 207, 207, 207
+   838	173f	d4 7f d4 d4*		byte.b	212, 127, 212, 212, 212, 127, 212, 127
+   839	1747	00			byte.b	0
+   840	1748		    openArps
+   841	1748	c3 cf d7 c3*		byte.b	195,207,215,195,207,215,195,207
+   842	1750	c9 d4 db c9*		byte.b	201,212,219,201,212,219,201,212
+   843	1758	cf d7 df cf*		byte.b	207,215,223,207,215,223,207,215
+   844	1760	cf d7 df cf*		byte.b	207,215,223,207,215,223,207,215
+   845	1768	00			byte.b	0
+   846	1769		    halfArps
+   847	1769	c3 cf d7 c3*		byte.b	195,207,215,195,207,215,195,207
+   848	1771	c9 d4 db c9*		byte.b	201,212,219,201,212,219,201,212
+   849	1779	00			byte.b	0
+   850	177a
+   851	177a		    bassline
+   852	177a	b5 b5 b5 b5*		byte.b	181,181,181,181,127,127,127,127,181,181,181,181,127,127,127,127
+   853	178a	c8 c8 c8 c8*		byte.b	200,200,200,200,185,185,185,185,127,127,127,127,173,173,173,173
+   854	179a	7f 7f 7f 7f*		byte.b	127,127,127,127,173,173,173,173,127,127,127,127,173,173,173,173
+   855	17aa	c8 c8 c8 c8*		byte.b	200,200,200,200,200,200,200,127,181,181,181,181,181,181,127,127
+   856	17ba	00			byte.b	0
+   857	17bb		    bassline2
+   858	17bb	b5 b5 b5 b5*		byte.b	181,181,181,181,127,127,127,127,181,181,181,181,127,127,127,127
+   859	17cb	c8 c8 c8 c8*		byte.b	200,200,200,200,185,185,185,185,127,127,127,127,173,173,173,173
+   860	17db	7f 7f 7f 7f*		byte.b	127,127,127,127,173,173,173,173,127,127,127,127,173,173,173,173
+   861	17eb	c8 c8 c8 c8*		byte.b	200,200,200,200,200,200,200,127,232,232,232,232,232,232,127,127
+   862	17fb	00			byte.b	0
+   863	17fc		    bassline2accompy2
+   864	17fc	b5 b5 b5 b5*		byte.b	181,181,181,181,127,127,127,127,181,181,181,181,127,127,127,127
+   865	180c	c8 c8 c8 c8*		byte.b	200,200,200,200,185,185,185,185,127,127,127,127,173,173,173,173
+   866	181c	7f 7f 7f 7f*		byte.b	127,127,127,127,173,173,173,173,127,127,127,127,173,173,173,173
+   867	182c	c8 c8 c8 c8*		byte.b	200,200,200,200,200,200,200,127,232,232,232,232,232,232,127,127
+   868	183c	c8 c8 c7 c8*		byte.b	200,200,199,200,201,200,127,127,127,127,127,127,192,192,191,192
+   869	184c	c1 c0 7f 7f*		byte.b	193,192,127,127,127,127,127,127,189,189,188,189,190,189,127,127
+   870	185c	7f 7f 7f 7f*		byte.b	127,127,127,127,185,185,184,185,186,185,127,127,127,127,127,127
+   871	186c	b5 b5 b4 b5*		byte.b	181,181,180,181,182,180,127,127,181,182,183,185,188,192,197,209
+   872	187c	00			byte.b	0
+   873	187d		    accompy1
+   874	187d	cb cb cb cb*		byte.b	203,203,203,203,203,203,203,203,203,203,203,203,203,203,127,127
+   875	188d	7f 7f 7f 7f*		byte.b	127,127,127,127,127,127,127,127,218,218,219,218,218,219,218,218
+   876	189d	db da 7f 7f*		byte.b	219,218,127,127,127,127,127,127,127,127,127,173,173,127,127,127
+   877	18ad	ea d6 ad ea*		byte.b	234,214,173,234,214,173,234,214,173,234,214,173,234,214,173,214
+   878	18bd	cb cb cb cb*		byte.b	203,203,203,203,203,203,203,203,203,203,203,203,203,203,127,127
+   879	18cd	7f 7f 7f 7f*		byte.b	127,127,127,127,127,127,127,127,218,218,219,218,218,219,218,218
+   880	18dd	db da 7f 7f*		byte.b	219,218,127,127,127,127,127,234,214,173,234,214,173,234,214,173
+   881	18ed	ea d6 ad ea*		byte.b	234,214,173,234,214,173,234,214,173,234,214,173,234,214,173,214
+   882	18fd	00			byte.b	0
+   883	18fe		    accompy2
+   884	18fe	91 c8 e3 c8*		byte.b	145,200,227,200,145,200,227,200,145,200,227,226,225,224,223,222
+   885	190e	97 cb e5 cb*		byte.b	151,203,229,203,151,203,229,203,151,203,229,228,227,226,225,224
+   886	191e	9e ce e7 cd*		byte.b	158,206,231,205,158,206,231,206,158,158,206,231,230,229,228,227
+   887	192e	a1 d3 e8 d3*		byte.b	161,211,232,211,161,211,232,211,161,211,232,232,231,230,229,228
+   888	193e	c8 c8 c7 c8*		byte.b	200,200,199,200,201,200,127,127,127,127,127,127,192,192,191,192
+   889	194e	c1 c0 7f 7f*		byte.b	193,192,127,127,127,127,127,127,189,189,188,189,190,189,127,127
+   890	195e	7f 7f 7f 7f*		byte.b	127,127,127,127,185,185,184,185,186,185,127,127,127,127,127,127
+   891	196e	b5 b5 b4 b5*		byte.b	181,181,180,181,182,180,127,127,181,182,183,185,188,192,197,209
+   892	197e	00			byte.b	0
+   893	197f
+   894	197f		    extraKik
+   895	197f	c8 96 8c 87*		byte.b	200,150,140,135,130,128,1,1
+   896	1987	c8 96 8c 87*		byte.b	200,150,140,135,130,128,1,1
+   897	198f	c8 96 8c 87*		byte.b	200,150,140,135,130,128,1,1
+   898	1997	c8 96 8c 87*		byte.b	200,150,140,135,130,128,1,1
+   899	199f	c8 96 8c 87*		byte.b	200,150,140,135,130,128,1,1
+   900	19a7	c8 96 8c 87*		byte.b	200,150,140,135,130,128,1,1
+   901	19af	c8 96 8c 87*		byte.b	200,150,140,135,130,128,1,1
+   902	19b7	c8 96 8c 87*		byte.b	200,150,140,135,130,128,1,1
+   903	19bf	00			byte.b	0
+   904	19c0
+   905	19c0
+   906	19c0		    extraKikSnar
+   907	19c0	c8 96 8c 87*		byte.b	200,150,140,135,130,128,1,1
+   908	19c8	c8 96 8c 87*		byte.b	200,150,140,135,130,128,1,1
+   909	19d0	f8 d2 ee d7*		byte.b	248,210,238,215,230,223,1,1
+   910	19d8	c8 96 8c 87*		byte.b	200,150,140,135,130,128,1,1
+   911	19e0	c8 96 8c 87*		byte.b	200,150,140,135,130,128,1,1
+   912	19e8	c8 96 8c 87*		byte.b	200,150,140,135,130,128,1,1
+   913	19f0	f8 d2 ee d7*		byte.b	248,210,238,215,230,223,1,1
+   914	19f8	c8 96 8c 87*		byte.b	200,150,140,135,130,128,1,1
+   915	1a00	00			byte.b	0
+   916	1a01
+   917	1a01						;	---------
+   918	1a01						;	DATA HOLD
+   919	1a01						;	---------
+   920	1a01		    artist
+   921	1a01						;	text	'	  B.KNOX'
+   922	1a01	20 02 2d 0b*		byte.b	32,2,45,11,14,15,24,32
+   923	1a09	00			byte.b	0
+   924	1a0a		    songtitle
+   925	1a0a						;	text	' SEPTATAURUS '
+   926	1a0a	00			byte.b	0
+   927	1a0b
+   928	1a0b		    endPattern
+   929	1a0b	ff ff			byte.b	255,255
+   930	1a0d
+   931	1a0d

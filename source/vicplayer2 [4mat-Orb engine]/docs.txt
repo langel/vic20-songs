@@ -1,0 +1,210 @@
+Vic-20 Player 2 Docs : 4mat/Orb 2007 (mobile_4mat@hotmail.com)
+------------------------------------
+
+Here's some quick docs for the player.  As it was originally written just for
+my own use it's not very friendly to learn, sorry.  There's a lot of typing
+involved, and recalculating tables while using it.
+
+The source is split up into 3 parts:
+
+player.asm - Frontend for testing with.  Shows rastertime & filesize. (player & music together, not
+             the extra 34 bytes of workspace variables the player uses as I usually put them in the 
+             zero page) 
+driver.asm - Just the player for inclusion in demos.
+data.asm   - Music data. (used by driver.asm) 
+
+Here's a quick recap of the Vic-20 soundchip 'features':
+
+* There are 4 sound channels: 3 pulse and 1 noise.  
+* On the pulse channels there are 5+ octaves available but each channel can only play 3 of them:
+  Channel 1 = Octaves 1-3 (bass)
+  Channel 2 = Octaves 2-4 (mid range)
+  Channel 3 = Octaves 3-5 (high range)
+* All channels only have a 7-bit range, so note frequencies go out of tune.
+* There are no ADSR functions like the SID chip has, instead there is one
+  global volume control.
+
+Here's how the player uses the chip:
+
+* You have 256 bytes of songdata, 256 bytes of instrument data, and 223 bytes
+  of pattern data.
+* Patterndata can be transposed and repeated in a song.  You can have as
+  many patterns as you can fit into 223 bytes.
+* You can have up to 16 instruments.
+* The noise channel is controlled from the instruments rather than having
+  songdata of it's own. I figured this was a better idea as it's usually 
+  only used for drums anyway.
+* Each instrument can have arpeggio, basic waves fx support, volume ramping and
+  note switch off over time.
+* The volume channel priority is based on which channel it's in.  Channel
+  1 has highest priority, then channel 2, and finally channel 3.
+* The wave fx support is *very* basic.  You can only switch it on or off,
+  you can't set which wave type will play or durations or anything.  Switching
+  it on and off during instruments can yield some fake pulsewidth modulation
+  sounds, particularly effective with arpeggio chords.
+
+  note : Waves FX technique was invented by Viznut/PWP.  See PWP and Dekadence
+         demos for correct implementation of the technique.
+
+Pattern data: (patttab table)
+-------------
+
+As with a tracker editor, music is constructed from patterns played in a set order.  
+In this player each pulse channel has it's own order. (like a lot of c64 editors do)
+
+The commands available for each pattern are: (note: any label with number >9 will be in hex)
+
+Note table:
+               c   c#   d    d#   e    f   f#   g    g#   a    a#   b
+            ----------------------------------------------------------
+  Octave1     cn1 cs1  dn1  ds1  en1  fn1 fs1  gn1  gs1  an1  as1  bn1
+  Octave2     cn2 cs2  dn2  ds2  en2  fn2 fs2  gn2  gs2  an2  as2  bn2
+  Octave3     cn3 cs3  dn3  ds3  en3  fn3 fs3  gn3  gs3  an3  as3  bn3
+  Octave4     cn4 cs4  dn4 
+ 
+cn1 - dn4    = Note to play. First letter is note (eg: c,d,e,f etc.) 
+                             Second latter is natural (n) or sharp (s)
+                             Third letter is octave 1-4.
+               If you want even higher frequencies add them to the frequency 
+               table in driver.asm. :) 
+
+rest         = Set channel to silence and play for current note length. Does 
+               not continue previous note.
+
+nl1 - nl10   = Change note length. By default every channel is set to nl1, which means 
+               after each beat the next note in the pattern will play.
+               nl2 = 2 beats duration, nl3 = 3 beats duration, nla = 10 beats duration etc.
+               All subsequent notes will use this length until another notelength 
+               command is used.  
+
+in0 - inf    = Change channel to use instrument 0-f.  All subsequent notes will use this
+               instrument until another instrument command is used.  By default all channels
+               will be playing instrument 0.
+
+stop_pattern = End pattern.  Every pattern must have this at the end.
+
+Misc. pattern variables:
+------------------------
+
+Pattpos = Used by the driver to track where it is in the pattern data.  You only need to edit
+          this so all 3 variables are pointing at a 'stop_pattern' command in the data.  I 
+          usually have the first two bytes of my pattern data as 'rest,stop_pattern', so pattpos
+          would be set to $01,$01,$01
+          
+Song data: (songtab table)
+----------
+
+Here is the pattern order for the song, with each channel having it's own list.
+
+The commands available for the song order are: (note: any label with number >9 will be in hex)
+
+$00-$df     = Pattern position to play from.  Because there are no set amount
+              of patterns, you have to use the start positions of each pattern in your
+              pattern table.  Please remember, when you make changes to a pattern
+              and there are more patterns after the change, you'll need to recalculate
+              your songtable. 
+
+rp1 - rp10  = Repeat the next pattern x times. (eg: rp1 = repeat twice, rp4 = repeat 4 times)
+
+tr0 - tre   = Transpose this channel x semitones. (eg: trc = transpose up 1 octave)  The
+              channel will stay at this transpose level until you set it back to zero with
+              tr0.
+
+song_end    = End song channel.  Each song channel must have this at the end.
+
+Misc. song variables:
+---------------------
+
+Songpos   = Start positions in the songdata for each channel.
+
+Songstart = When channel loops it'll play from these positions instead of the ones
+            in Songpos, so you don't have to restart the song from the beginning if you
+            don't want to.
+
+Song tempo variables:
+---------------------
+
+Tempo     = Two variables. It'll toggle between them after each pass, so you can use
+            this for 'funk tempo' songs (eg: $06,$03), or tunes slightly faster/slower
+            than the set speeds. (eg: $03, $04).  Set them both to the same value 
+            for a constant tempo.
+
+Ticks     = Tempo ticks counter. Set it to the same as the first tempo variable so the
+            first beat of the song is the same speed.
+
+Tempotick = Leave this as $01, this just makes sure the tempo settings play in the 
+            correct order.
+
+Instruments:
+------------
+
+Like other music players, this one updates the music channels every frame, which 
+means you can have instruments that alter the note playing to create the illusion
+of more channels playing simultaneously (arpeggio), or more than one instrument
+being played on the same channel. (setting pitch for drums)  You can also control
+the noise channel from any instrument.
+
+Setting up instruments is split into two parts, the Instrument table (which is
+similar to creating patterns and song data) and 4 variables for each pattern.  The
+variables are:
+
+Inststart = Start position in Instrument table this instrument begins at. (like with patterns or song channels)
+Notelen   = Length to play note for in frame ticks ($00-$7f hexbyte)
+            Add +$80 to this value if instrument is going to use the noise channel. (eg: $7f + $80 = $ff)
+Volbyte   = Starting volume value for instrument.  
+            If you set this to $00 it won't set the volume when this instrument plays)
+            Otherwise it's $xy : x = Ticks before adding Volamount, y = Start volume of instrument. (0-f)
+            (eg: $3f = Start volume of f, waiting 3 frames before adding volume amount)
+Volamount = Amount to add/decrease from volume of instrument. 
+            Due to not clearing the carry flag in the code, the values work like this:          
+            $02 = -3 , $01 = -2 , $00 = -1 , $ff = +0 , $fe = +1 , $fd = +2, $fc = +3 etc.
+
+As already mentioned, the priority for volume control is based on the channel the instrument
+is playing on, with Channel 1 having highest priority.  So for example, if an instrument using
+the volume is playing on Channel 2 and a new one starts on Channel 1, volume control
+will pass to the new instrument.  For long lead instruments it's best to keep the Volbyte set
+to $00 and let other shorter instruments have control.
+
+Instrument table:
+-----------------
+Instruments are a list of commands that alter the currently playing note and end with
+a loopback command. (like setting a loop point in a sample)  If you've set the instrument to 
+use the noise channel then you use 2 bytes for each command.
+
+No noise channel:
+
+note        = Play note from pattern data.
+arp1 - arpf = Play note transposed by x amount. (eg: arpc = play octave higher)
+wave        = Play note from pattern data with wave effect enabled.
+wav1 - wavf = Play note transposed by x amount with wave effect enabled. (eg: wavc = play octave higher)
+$80-$ff     = Set channel to play this note pitch for the frame. (ignoring transpose)
+              Good for drums.
+off         = Set channel to silence, good for echo.
+loopbackx   = End of instrument, loop back x amount. 
+              (eg: loopback1 = hold on previous frame, loopback2  = loop back 2 frames etc)
+
+Using noise channel:
+
+The first byte is the pitch of the noise channel, $80-$ff, or $7f to switch it off.
+
+The second byte is the instrument command for the tone channel.
+
+note        = Play note from pattern data.
+arp1 - arpf = Play note transposed by x amount. (eg: arpc = play octave higher)
+wave        = Play note from pattern data with wave effect enabled.
+wav1 - wavf = Play note transposed by x amount with wave effect enabled. (eg: wavc = play octave higher)
+$80-$ff     = Set channel to play this note pitch for the frame. (ignoring transpose)
+              Good for drums.
+off         = Set channel to silence, good for echo.
+loopbackx   = End of instrument, loop back x amount. 
+              (eg: loopback1 = hold on previous frame, loopback2  = loop back 2 frames etc)
+
+When using the loopback command with the noise channel, you must put an extra byte first before the 
+loopback and count back 2 bytes per frame.
+
+Example without noise channel:  $00,loopback1 = loop on previous frame. 
+        with noise channel:     $00,$00,$00,loopback3 = loop on previous frame.
+        
+For more example instruments read the data.asm file which has descriptions of each one in the
+test song.
+
