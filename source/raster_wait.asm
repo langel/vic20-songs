@@ -7,3 +7,4 @@ raster_wait:
 	lda #17
 	cmp $9004
 	bpl raster_wait
+	rts
