@@ -1,0 +1,28 @@
+
+0        8        f      16/22
+
+VIC 20 AUDIO MACRO EDITOR
+
+ SQ1 SQ2 SQ3 NOI V
+
+ R  O1 O2 O3 NO V
+
+ 0  00 00 00 00 F
+ 1  00 00 00 00 F
+ 2  00 00 00 00 F
+ 3  00 00 00 00 F
+
+doing 16 wide makes displays easiest to code
+
+
+16 wide
+	16 lines per ram page
+	32 lines goes off screen
+22 wide (normal standard h16)
+	11.6363 lines per screen ram page
+24 wide (h18)
+	10.666 lines on first screen ram page
+	21.333 lines for both ram pages
+32 wide 
+	wraps the screen?
+	only 16 lines tall from 512 bytes ram
