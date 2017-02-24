@@ -31,10 +31,30 @@ clearing_screen:
 	cpy #$00
 	bne clearing_screen
 
+; setup irq wrapper
+	;sei
+	;lda #<irq_custom
+	;sta $0314
+	;lda #>irq_custom
+	;sta $0315
+	;cli
 
 ; main loop at bottom
 	jsr raster_wait
 	jmp main_bitch
+
+
+; IRQ color splotch
+irq_custom:
+	lda #42
+	sta 36879
+	jsr $ffea
+	jsr $eb1e
+	;jsr $eabf
+	lda #76
+	sta 36879
+	jmp $ff56
+	;rti
 
 
 ; RASTER
@@ -43,7 +63,7 @@ raster_wait:
 ; hex 17 is off screen on NTSC
 	lda #17
 	cmp $9004
-	bpl raster_wait
+	bne raster_wait
 	rts
 
 
@@ -283,7 +303,11 @@ read_display_keys:
 ; main loop
 main_bitch:
 	jsr read_display_keys
+	lda #27
+	sta 36879
 	jsr raster_wait
+	lda #175
+	sta 36879
 	jmp main_bitch;
 
 

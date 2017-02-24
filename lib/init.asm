@@ -19,16 +19,17 @@
 
 
 ; clear screen
-	ldy #0
+	ldy #$00
 clearing_screen:
+; set all to blank space
 	lda #$20
 	sta $1e00,y
 	sta $1f00,y
-	lda #$0
+; set all to black
+	lda #$00
 	sta $9600,y
-	lda #$2
+	lda #$00
 	sta $9700,y
 	iny
-	clc
 	cpy #$00
 	bne clearing_screen

@@ -3,8 +3,8 @@
 name=$1
 
 if [[ -n "$name" ]]; then
-	echo "./dasm.exe $name.asm -o$name.bin && ./emu/xvic.exe $name.bin"
-	./dasm.exe $name.asm -o$name.bin && ./emu/xvic.exe $name.bin
+	echo "./dasm.exe $name.asm -o$name.prg && ./emu/xvic.exe $name.prg"
+	./dasm.exe $name.asm -o$name.prg && ./emu/xvic.exe $name.prg
 else
 	echo "./makerun.sh \${project_name}"
 fi

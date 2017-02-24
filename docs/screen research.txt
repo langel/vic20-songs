@@ -26,3 +26,16 @@ doing 16 wide makes displays easiest to code
 32 wide 
 	wraps the screen?
 	only 16 lines tall from 512 bytes ram
+
+
+
+*notes on emulators*
+
+VIC20 by default only has RIGHT and DOWN arrow keys.
+Pressing either SHIFT will reverse the direction of these keys.
+winVICE (emulator) automagically adds shift when using the 4 arrow keys.
+Modern PC keyboard TAB == RESTORE key
+Modern PC keyboard LEFT_CTRL == COMMODORE key
+
+Many other keys do not directly map between the two keyboards.
+  example quotes " are SHIFT-2
