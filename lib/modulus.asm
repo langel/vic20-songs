@@ -32,7 +32,7 @@ modulus_hertzdevil_loop:
 	cmp $01
 	bcc modulus_hertzdevil_skip
 	sbc $01
-modulus_hertzdevil_skip
+modulus_hertzdevil_skip:
 	dey
 	bne modulus_hertzdevil_loop
 	rts
