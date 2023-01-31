@@ -6,8 +6,6 @@ hex_display: subroutine
 	; temp01 = value to display
 	; temp02 = screen position low byte
 	; temp03 = screen position high byte
-	lda wtf
-	sta SCREEN_RAM+100
 	ldy #$00
 	lda temp01
 	lsr
@@ -17,12 +15,18 @@ hex_display: subroutine
 	tax
 	lda hex_characters,x
 	sta (temp02),y
-	sta SCREEN_RAM+96
 	iny
 	lda temp01
 	and #%00001111
 	tax
 	lda hex_characters,x
 	sta (temp02),y
-	sta SCREEN_RAM+97
+	rts
+
+hex_clear: subroutine
+	ldy #$00
+	lda #CHR_SPACE
+	sta (temp02),y
+	iny
+	sta (temp02),y
 	rts

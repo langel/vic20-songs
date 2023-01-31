@@ -24,7 +24,7 @@ noi_sweep_counter		byte
 	lda #CHR_SPACE
 	jsr screen_set_char
 
-init_sound:
+	; init more stuff
 	lda #$00
 	sta wtf
 	sta VOICE_0
@@ -38,7 +38,7 @@ init_sound:
 
 
 ; =====			MAIN
-main_loop:
+main_loop: subroutine
 
 raster_one:
 	lda #$1a
@@ -54,6 +54,20 @@ raster_one:
 
 	; display wtf
 	lda wtf
+	ldy #$15
+.wtf_loop
+	sta SCREEN_RAM,y
+	dey
+	bpl .wtf_loop
+	ldy wtf
+	sta SCREEN_RAM,y
+	sta SCREEN_RAM+$100,y
+	dey
+	lda #CHR_SPACE
+	sta SCREEN_RAM,y
+	sta SCREEN_RAM+$100,y
+
+	lda wtf
 	sta temp01
 	lda #<SCREEN_RAM+48
 	sta temp02
@@ -61,13 +75,62 @@ raster_one:
 	sta temp03
 	jsr hex_display
 
-	lda #57
-	sta temp01
-	lda #<SCREEN_RAM+48
+.v0display
+	lda #<SCREEN_RAM+55
 	sta temp02
 	lda #>SCREEN_RAM+1
 	sta temp03
+	lda VOICE_0
+	bpl .v0clear
+	sta temp01
 	jsr hex_display
+	bne .v0done
+.v0clear
+	jsr hex_clear
+.v0done
+
+.v1display
+	lda #<SCREEN_RAM+60
+	sta temp02
+	lda #>SCREEN_RAM+1
+	sta temp03
+	lda VOICE_1
+	bpl .v1clear
+	sta temp01
+	jsr hex_display
+	bne .v1done
+.v1clear
+	jsr hex_clear
+.v1done
+
+.v2display
+	lda #<SCREEN_RAM+65
+	sta temp02
+	lda #>SCREEN_RAM+1
+	sta temp03
+	lda VOICE_2
+	bpl .v2clear
+	sta temp01
+	jsr hex_display
+	bne .v2done
+.v2clear
+	jsr hex_clear
+.v2done
+
+.v3display
+	lda #<SCREEN_RAM+70
+	sta temp02
+	lda #>SCREEN_RAM+1
+	sta temp03
+	lda VOICE_3
+	bpl .v3clear
+	sta temp01
+	jsr hex_display
+	bne .v3done
+.v3clear
+	jsr hex_clear
+.v3done
+
 
 	; bg color work done
 	lda #$26
