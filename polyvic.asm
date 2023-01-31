@@ -1,75 +1,79 @@
 
-	processor 6502
+	include "lib/vicdefs.asm"
 
-	ORG 4097
+	seg.u ZEROPAGE
+	org $0000
 
-	byte	$0b,$10,$04,$00,$9e,$34,$31,$31,$30,0,0,0,0 ; 10 SYS4109
+wtf     byte
+temp00  byte
+temp01  byte
+temp02  byte
+temp03 byte
+
+pu1_beat_counter		byte
+pu2_beat_counter		byte
+pu3_beat_counter		byte
+noi_sweep_counter		byte
 
 
+	VIC_HEADER
+	VIC_INIT_TAKEOVER
 
-pu1		EQM	$900a
-pu2		EQM	$900b
-pu3		EQM	$900c
-noi		EQM	$900d
-vol		EQM	$900e
-
-wtf		EQM	$0340
-hex_display_value		EQM	$034e
-hex_display_pos		EQM	$034f
-pu1_beat_counter		EQM	$0350
-pu2_beat_counter		EQM	$0351
-pu3_beat_counter		EQM	$0352
-noi_sweep_counter		EQM	$0353
-
-	; disable and acknowledge interrupts	
-	lda #$7f
-	sta $912e     
-	sta $912d
-	sta $911e 
-  
-	
-
+	lda #COL_WHITE
+	jsr screen_set_color
+	lda #CHR_SPACE
+	jsr screen_set_char
 
 init_sound:
 	lda #$00
-	sta pu1
-	sta pu2
-	sta pu3
-	sta noi
+	sta wtf
+	sta VOICE_0
+	sta VOICE_1
+	sta VOICE_2
+	sta VOICE_3
 	lda #$0f
-	sta vol
+	sta VOLUME
 
 	jsr init_song
 
 
 ; =====			MAIN
-program_loop:
+main_loop:
 
 raster_one:
 	lda #$1a
-	cmp $9004
+	cmp RASTER
 	bne raster_one
 
-
+	; bg color work time
 	lda #$08
-	sta 36879
+	sta SCR_COL
 
 	jsr play_routine
 	inc wtf
+
 	; display wtf
 	lda wtf
-	sta hex_display_value
-	lda #22
-	sta hex_display_pos
+	sta temp01
+	lda #<SCREEN_RAM+48
+	sta temp02
+	lda #>SCREEN_RAM
+	sta temp03
 	jsr hex_display
+
 	lda #57
-	sta hex_display_pos
+	sta temp01
+	lda #<SCREEN_RAM+48
+	sta temp02
+	lda #>SCREEN_RAM+1
+	sta temp03
 	jsr hex_display
 
+	; bg color work done
 	lda #$26
-	sta 36879
+	sta SCR_COL
 
-	jmp program_loop
+	jmp main_loop
 	
 	
 
@@ -115,7 +119,7 @@ play_routine: subroutine
 	stx pu1_beat_counter
 	lda pu1_beat_pattern,x
 .dont_reset_pu1_counter
-	sta pu1
+	sta VOICE_0
 	inc pu1_beat_counter
 .dont_pu1
 
@@ -130,7 +134,7 @@ play_routine: subroutine
 	stx pu2_beat_counter
 	lda pu2_beat_pattern,x
 .dont_reset_pu2_counter
-	sta pu2
+	sta VOICE_1
 	inc pu2_beat_counter
 .dont_pu2
 
@@ -145,7 +149,7 @@ play_routine: subroutine
 	stx pu3_beat_counter
 	lda pu3_beat_pattern,x
 .dont_reset_pu3_counter
-	sta pu3
+	sta VOICE_2
 	inc pu3_beat_counter
 .dont_pu3
 
@@ -159,41 +163,20 @@ play_routine: subroutine
 	and #$01
 	bne .no_noi
 	lda noi_sweep_counter
-	sta noi
+	sta VOICE_3
 	rts
 .no_noi:
 	lda #$00
-	sta noi
+	sta VOICE_3
 	rts
 .hat
 	lda #$fa
-	sta noi
+	sta VOICE_3
 .no_hat
 	rts
 
 
+; helper functions
+	include "lib/hex_display.asm"
+	include "lib/screen_set.asm"
 
-hex_display:
-; $034e = value to display
-; $034f = screen placement
-; handle first character
-	lda hex_display_value
-	ldx hex_display_pos
-	lsr
-	lsr
-	lsr
-	lsr
-	tay
-	lda hex_characters,y
-	sta 8100,x
-; handle second character
-	lda $034e
-	and #%00001111
-	tay
-	lda hex_characters,y
-	inx
-	sta 8100,x
-	rts
-	
-hex_characters:
-	byte $30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$01,$02,$03,$04,$05,$06
